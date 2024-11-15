@@ -6,8 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
-#! Vraag hoe het zit met de complexe getallen in de opdracht, en ook
-#! hoe het zit met afronden enzo
+
 # Manual: to run the various parts of the code, use the following command:
 # python fractal.py <opdracht>
 # where <opdracht> is an integer between 1 and 5, corresponding to the exercise
@@ -175,7 +174,18 @@ def round_guess(x: float, error: float, n: int, dec: int = 6) -> Tuple[float, fl
     """
     Helper function to newton_raphson_method(); it rounds the result to
     the desired precision, adjust approximated but unprecise imaginary
-    parts, and returns the result as a tuple (Root, Error, Number of Iterations)
+    parts, and returns the result as a tuple (Root, Error, Number of Iterations).
+    
+    (One could argue that this function and the rounding is not necessary, as a
+    root could very well have a small imaginary part, or a precision of a few
+    decimals. My take, however, is that it partly serves as "compensation" for the
+    perturbation being given below to the derivative, which will often be only in
+    the guess because of the perturbation, and not in the actual root; and partly,
+    because it is an approximation after all, so we can allow ourselves to be a bit
+    flexible in our approach, accepting minor deviations to achieve convergence.
+    
+    So, TL;DR, it's a choice of theorethical precision and practical considerations,
+    and I chose the practical route.)
 
     :param x : the root found by the Newton-Raphson method
     :param error : the error in the root
@@ -186,7 +196,6 @@ def round_guess(x: float, error: float, n: int, dec: int = 6) -> Tuple[float, fl
     if isinstance(x, complex) and abs(x.imag) < 1.0e-6:
         x = x.real
     return np.round(x, dec), np.round(error, dec), n
-
 
 
 def newton_raphson_method(
@@ -204,25 +213,29 @@ def newton_raphson_method(
     """
     n = 0
     tolerance = 1.0e-6
-
+    # print('Initial guess:', x0)
     while n < maxiter:
         fx = f(x0, roots)       # calculate f(x0)
         dfx = df(x0, roots)     # calculate f'(x0)
-        if abs(dfx) < 1.0e8:    # if f'(x0) is smaller than 1.0e8, perturb it slightly
+        
+        if abs(dfx) < 1.0e-4:   # if f'(x0) is smaller than 1.0e8, perturb it slightly
                                 # into the complex plane to prevent division by zero
             dfx += (1.0e-6 + 1.0e-6j)
         x1 = x0 - fx / dfx      # calculate x1 (as per Eq. (2))
                                 # if within the error tolerance, return result
         if abs(x1 - x0) < tolerance:
+            # print(abs(x1 - x0))
             return round_guess(x1, abs(x1 - x0), n, dec)
         
-        x0 = x1                 # update x0 and n
+        if n + 1 != maxiter:    # if not at the last iteration, update x0
+            x0 = x1              
         n += 1
                                 # if the loop exits, the method did not converge
     # print(f'newton_raphson_method(): did not converge after {n} iterations')
+    # print()
     return x1, abs(x1 - x0), n
-#! For the report, keep in mind the story about the Real and Imaginary parts, and how
-#! to choose the thresholds/precision etc., besides all the normal stuff to tell
+
+
 
 def execute_part_3():
     """
@@ -271,16 +284,29 @@ def execute_part_4():
 
     print('\nRoot, Error, Iterations')
     for x0 in initial_guesses:
-        print(newton_raphson_method(roots, x0))
+        print(newton_raphson_method(roots, x0, 100000))
     print()
 
     ### Outputs:
+    # Voor maxiter = 1000
     """
     Root, Error, Iterations
     ((1+1j), 0.0, 5)
     ((1-1j), 0.0, 5)
-    ((1+1j), 1e-06, 24)
-    ((1+1j), 0.0, 24)
+    ((2.7700197845356906+0j), 2.032970741517335, 1000)
+    ((1+1j), 0.0, 25)
+    """
+    # Voor maxiter = 1000 * 100 = 100,000
+    """
+    Root, Error, Iterations
+    Initial guess: (2+1j)
+    ((1+1j), 0.0, 5)
+    Initial guess: (-0-1j)
+    ((1-1j), 0.0, 5)
+    Initial guess: 3
+    ((1+1j), 0.0, 29925)
+    Initial guess: 2
+    ((1+1j), 0.0, 25)
     """
 
 ############# PART 5 ##############
@@ -311,10 +337,11 @@ def execute_part_5():
     """
     roots = [1 + 1j, 1 - 1j, -1 + 1j, -1 - 1j]
 
+    # For the report, also used 25 x and y points
     x_min, x_max, nx = -2, +2, 10 # minimum, maximum value of x, and number of x points
     y_min, y_max, ny = -2, +2, 10 # minimum, maximum value of y, and number of y points
 
-    maxiter = 4
+    maxiter = 4                   # For report, used 4, 8, 16
     Z = np.empty((nx, ny))
 
     for idx, x in enumerate(np.linspace(x_min, x_max, nx)):
@@ -344,7 +371,7 @@ def execute_part_5():
                 color = 'k',
                 marker = 'X',
                 edgecolors = 'w')
-    plt.savefig(f'newton_fractal_{maxiter}_iterations.pdf')
+    plt.savefig(f'newton_fractal_{maxiter}_iterations.png')
     plt.show()
     
 
