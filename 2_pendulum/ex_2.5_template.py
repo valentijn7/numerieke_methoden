@@ -18,7 +18,8 @@ t = np.linspace(0, 100, n_frames)
 dt = t[1] - t[0]  # timestep
 
 g = 9.8  # m/s**2
-L = 1.
+L = 1. # dot to make it float
+m = 1  # add mass of 1 for completeness
 theta_0 = np.deg2rad(60)
 omega_0 = 0
 
@@ -27,21 +28,35 @@ k = 1e0
 ene_eq = g * L
 
 # Define the derivatives of theta and omega (the function to integrate)
-def derivatives_pendulum_feedback(state, t):
+def derivatives_pendulum_feedback(state: np.array, t: float) -> np.array:
     """
         state: numpy array giving the state of the pendulum at time t
         (theta and omega)
 
         Function that returns the derivatives
             theta'(t) = omega(t)
-            omega'(t) = ...
+            omega'(t) = -g/L*sin(theta(t)) - k*theta'(t)*delta_E
 
         Returns a np.array containing the derivatives (theta', omega')
     """
+    theta, omega = state
+                                    # E_total = kinetic + potential energy
+    E_total = (0.5 * m * L**2 * omega**2) - \
+              (m * g * L * np.cos(theta))
+    delta_E = E_total - ene_eq      # energy difference
 
-    # YOUR CODE GOES HERE
+    theta_prime = omega             # theta_prime and omega_prime_prime
+                                    # using Eq. (68) from reader
+    omega_prime = (-(g / L) * np.sin(theta)) - \
+                        (k * theta_prime * delta_E)
 
-def runge_kutta(old_state, t, dt, derivatives):
+    return np.array([theta_prime, omega_prime])
+
+
+
+def runge_kutta(
+        old_state: np.array, t: float, dt: float, derivatives: callable
+    ) -> np.array:
     """
         state: numpy array giving the state of the pendulum at time t
         t: starting time
@@ -53,17 +68,14 @@ def runge_kutta(old_state, t, dt, derivatives):
 
         Returns an np.array containing the new state (theta, omega)
     """
-
-    # YOUR CODE GOES HERE
-
-    # Calculate the ks
-    k1 = 
-    k2 = 
-    k3 = 
-    k4 = 
+    # Calculate the ks, as in (35) of the reader
+    k1 = dt * derivatives(old_state, t)
+    k2 = dt * derivatives(old_state + 0.5 * k1, t + 0.5 * dt)
+    k3 = dt * derivatives(old_state + 0.5 * k2, t + 0.5 * dt)
+    k4 = dt * derivatives(old_state + k3, t + dt)
 
     # And consequently the new state of the system
-    new_state = 
+    new_state = old_state + (k1 + 2 * k2 + 2 * k3 + k4) / 6
 
     return new_state
 
