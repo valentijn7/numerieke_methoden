@@ -50,8 +50,9 @@ def derivatives_simple_pendulum(state: np.array, t: float) -> np.array:
     return np.array([theta_prime, omega_prime])
 
 
-
-def euler(old_state:np.array, t: float, dt: float, derivatives) -> np.array:
+def euler(
+        old_state: np.array, t: float, dt: float, derivatives: callable
+    ) -> np.array:
     """
         old_state: numpy array giving the state of the pendulum at time t
         t: starting time
