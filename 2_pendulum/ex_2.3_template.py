@@ -32,8 +32,8 @@ omega_0 = 0
 
 
 # Define the derivatives of theta and omega (the function to integrate)
-def derivatives_simple_pendulum(state, t):
-    """
+def derivatives_simple_pendulum(state: np.array, t: float) -> np.array:
+    """ (Copied from 2.2)
         state: numpy array giving the state of the pendulum at time t
         (theta and omega)
 
@@ -43,10 +43,16 @@ def derivatives_simple_pendulum(state, t):
 
         Returns a np.array containing the derivatives (theta', omega')
     """
+    theta = state[0]
+    omega = state[1]
+    theta_prime = omega
+    omega_prime = - (g / L) * np.sin(theta)
+    return np.array([theta_prime, omega_prime])
 
-    # YOUR CODE GOES HERE
 
-def runge_kutta(old_state, t, dt, derivatives):
+def runge_kutta(
+        old_state: np.array, t: float, dt: float, derivatives: callable
+    ) -> np.array:
     """
         state: numpy array giving the state of the pendulum at time t
         t: starting time
@@ -58,17 +64,14 @@ def runge_kutta(old_state, t, dt, derivatives):
 
         Returns an np.array containing the new state (theta, omega)
     """
-
-    # YOUR CODE GOES HERE
-
-    # Calculate the ks
-    k1 = 
-    k2 = 
-    k3 = 
-    k4 = 
+    # Calculate the ks, as in (35) of the reader
+    k1 = dt * derivatives(old_state, t)
+    k2 = dt * derivatives(old_state + 0.5 * k1, t + 0.5 * dt)
+    k3 = dt * derivatives(old_state + 0.5 * k2, t + 0.5 * dt)
+    k4 = dt * derivatives(old_state + k3, t + dt)
 
     # And consequently the new state of the system
-    new_state = 
+    new_state = old_state + (k1 + 2 * k2 + 2 * k3 + k4) / 6
 
     return new_state
 
