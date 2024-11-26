@@ -150,7 +150,9 @@ def execute_part2():
     b_pred = 2      # set b as 2
 
     # Set a value for the learning rate
-    alpha =  0.1    # start with 0.1 as learning rate
+    alpha =  0.01   # start with 0.01 as learning rate
+                    # a higher alpha, e.g. 0.1, sometimes caused
+                    # numerical instability, i.e. divergence
 
     # Then, perform gradient descent steps until convergence
     convergence_treshold = 0.000001
@@ -217,39 +219,41 @@ def NN1_train(
         Function that backpropagates the errors on the hidden node and returns
         the updated values of his weight and bias as a tuple
     """
-    #! Wat moet ik met de variables parameter doen? 
     predictions = NN1_forward(inputs, w, b) # get the predictions
-    data = np.array([inputs, predictions])
-                                            # calculate derivatives (just like
-    dJda, dJdb = J_derivatives(data, w, b)  # in the gradient descent function)
-    w_new = w - alpha * (dJda)              # do gradient descent step
+    residuals = predictions - targets       # calculate the residuals
+    
+    dJda = np.mean(residuals * data[0])     # average of residuals times x-values
+    dJdb = np.mean(residuals)               # average of residuals
+    
+    w_new = w - alpha * (dJda)       
     b_new = b - alpha * (dJdb)
 
-    return (w_new, b_new)
+    return w_new, b_new                     # return the updated weights
 
 
 def execute_part3():
     # Generate a random starting values for w1
     global w
-    w = 1       # start with 1
-
-    # Set a value for the learning rate
-    learning_rate = 0.1 # start with 0.1
+    w = 1                   # start with 1
+    learning_rate = 0.01    # start with 0.01 to ensure stability
 
     # Then, train the NN until convergence
     convergence_treshold = 0.000001
+                            # initial error and weight list
     errors = [J(data, w, 0)]
     ws = [w]
-    while True:
-        # For each training step, update your weights;
-        # b is kept stable at 0, to investigate the behaviour of w
-        w, _ = NN1_train(data[0], data[1], w, 0, learning_rate)
-
-        errors.append(J(data, w, 0))
-        ws.append(w)
+    while True:             # gradient descent loop:
+                            # for each training step, update weights;
+                            # b is kept stable at 0, to investigate
+                            # the behaviour of w
+        w_new, _ = NN1_train(data[0], data[1], w, 0, learning_rate)
+        ws.append(w_new)
+        errors.append(J(data, w_new, 0))
 
         if(np.abs(errors[-1] - errors[-2]) < convergence_treshold):
             break
+                            
+        w = w_new           # update weight for next iteration
 
     # Plot the errors and w1 along the training
     plt.figure()
@@ -280,205 +284,252 @@ def execute_part3():
     plt.show()
 
 
-# # Method that generates a linear dataset
-# def generate_gaussian_data(ndata, interval, x0, sigma2, delta):
-#     """
-#         ndata: number of data to generate
-#         interval: tuple (min_x, max_x) setting the interval of values of x
-#         x0: centre of the gaussian distribution
-#         sigma2: standard deviation of the distribution
-#         delta: amplitude of the noise
-
-#         Routine that generates a set of ndata (x,y) points that verify the
-#         equation
-#         y = exp(-(x - x0)^2 / 2 * sigma2) and introducing noise.
-
-#         Returns the set of data in 2d numpy array of shape ndata x 2.
-#     """
-
-#     # YOUR CODE GOES HERE
-
-#     return np.vstack((x, y))
-
-# # Activation function
-
-
-# def g(z):
-#     # YOUR CODE GOES HERE
-
-#     # Derivative of the activation function
-
-
-# def dg(z):
-#     # YOUR CODE GOES HERE
-
-#     # Forward method for the neural network of fig 1.5
-
-
-# def NN2_forward(x, w1, b1, w2):
-#     """
-#         x: input (a single scalar)
-#         w1: array of weights of the hidden layer
-#         b1: array of biases of the hidden layer
-#         w2: array of weights of the output layer
-
-#         Routine that returns the output of the NN of fig 1.5.
-#         The output should be a single scalar, just like the input x
-#     """
-
-#     # YOUR CODE GOES HERE
-
-# # Forward method for the neural network of fig 1.5
-
-
-# def NN2_error(inputs, targets, w1, b1, w2):
-#     """
-#         x: input
-#         w1: array of weights of the hidden layer
-#         b1: array of biases of the hidden layer
-#         w2: array of weights of the output layer
-
-#         Routine that returns the error of the NN of fig 1.5.
-#     """
-
-#     # YOUR CODE GOES HERE
-
-# # Method that performs a training step of the neural network of fig 1.5
-
-
-# def NN2_train(inputs, targets, w1, b1, w2, dw1, db1, dw2, lr, momentum, wd):
-#     """
-#         inputs: inputs to the NN
-#         targets: targets of the NN
-#         w1: array of weights of the hidden layer
-#         b1: array of biases of the hidden layer
-#         w2: array of weights of the output layer
-#         dw1: array of last updates of the hidden layer weights
-#         db1: array of last updates of the hidden layer biases
-#         dw2: array of last updates of the output layer weights
-#         lr: learning rate
-#         momentum: momentum
-#         wd: weight decay
-
-#         Function that backpropagates the errors on the hidden nodes and returns
-#         the updated values of their weights and biases as a tuple of arrays
-#     """
-
-#     # YOUR CODE GOES HERE
-
-#     return (w1_new, b1_new, w2_new, dw1_new, db1_new, dw2_new)
-
-
-# def execute_part4():
-#     # Set the number of data and the interval for the x axis
-#     global ngdata
-#     ngdata = 500
-#     global ginterval
-#     ginterval = (-2.5, 2.5)
-
-#     # Set the amplitude of the noise
-#     global gdelta
-#     gdelta = 0.1
-
-#     # Generate the data
-#     global gaussian_data
-#     gaussian_data = generate_gaussian_data(ngdata, ginterval, 0, 0.5, gdelta)
-
-#     # Then, plot the data
-#     plt.figure()
-#     plt.plot(gaussian_data[0], gaussian_data[1], 'o', label=r'$(x_i,y_i)$')
-#     plt.title('Gaussian dataset')
-#     plt.xlabel('x')
-#     plt.ylabel('y')
-#     xs = np.linspace(ginterval[0], ginterval[1], 100)
-#     plt.plot(xs, np.exp(-(xs)**2), '-', label=r'$y = e^{-x^2}$')
-#     plt.legend()
-#     plt.show()
-
-#     # Now, for different numbers of hidden layers
-#     final_errors = []
-#     final_fits = {}
-#     ns = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-#     for n in ns:
-#         nhidden = n
-#         # And generate starting values for the hidden layer weights and biases
-#         # with the Xavier initialization
-#         global w1, b1, w2
-#         w1 =  # YOUR CODE GOES HERE
-#         b1 =  # YOUR CODE GOES HERE
-#         w2 =  # YOUR CODE GOES HERE
-#         dw1 =  # YOUR CODE GOES HERE
-#         db1 =  # YOUR CODE GOES HERE
-#         dw2 =  # YOUR CODE GOES HERE
-
-#         # Set a value for the learning rate, momentum and weight decay
-#         learningrate = 0.1
-#         momentum = 0.9
-#         weight_decay = 0.0001
-
-#         # Then, train the NN for nepochs epochs (epoch=a training step)
-#         nepochs = 1000
-#         errors = [NN2_error(gaussian_data[0], gaussian_data[1], w1, b1, w2)]
-#         for epoch in range(nepochs):
-#             # For each training step, update your weights
-
-#             # Update the list of errors
-#             errors.append(NN2_error(gaussian_data[0], gaussian_data[1], w1, b1, w2))
-
-#         # Plot the errors and w1 along the training
-#         plt.figure()
-#         plt.title('Training with {} hidden layers'.format(nhidden))
-#         plt.xlabel('Epoch')
-#         plt.ylabel('Error')
-#         plt.plot(range(len(errors)), errors)
-#         final_errors.append(errors[-1])
-#         plt.show()
-
-#         # Then, plot the dataset with the fitted model
-#         plt.figure()
-#         plt.title('Curve fit with {} hidden layers'.format(nhidden))
-#         plt.xlabel('x')
-#         plt.ylabel('y')
-#         plt.plot(gaussian_data[0], gaussian_data[1], 'o', label=r'(x_i,y_i)')
-#         xs = np.linspace(ginterval[0], ginterval[1], 100)
-#         y_pred = []
-#         for x in xs:
-#             y_pred.append(NN2_forward(x, w1, b1, w2))
-#         final_fits[n] = np.array(y_pred)
-#         plt.plot(xs, np.array(y_pred), '-', label=r'NN')
-#         plt.show()
-
-#     # Plot the errors trend
-#     plt.figure()
-#     plt.xlabel('N hidden nodes')
-#     plt.ylabel('Error')
-#     plt.plot(ns, final_errors, '-o')
-#     plt.show()
-#     # And the fits
-#     plt.figure()
-#     plt.xlabel('Curve fits')
-#     plt.xlabel('x')
-#     plt.ylabel('y')
-#     plt.plot(gaussian_data[0], gaussian_data[1], 'o', label=r'(x_i,y_i)')
-#     xs = np.linspace(ginterval[0], ginterval[1], 100)
-#     for n in ns:
-#         plt.plot(xs, final_fits[n], '-', label=r'n = {}'.format(n))
-#     plt.legend()
-#     plt.show()
-
-
-def validate_args(args: List[str]) -> bool:
+# Method that generates a linear dataset
+def generate_gaussian_data(
+        ndata: int, interval: Tuple[float, float], x0: float, sigma2: float, delta: float):
     """
-    Does a quick check on whether the argument (a number between 1 and 5)
-    is correctly and entered and thus valid. Else, it raises an error.
+        ndata: number of data to generate
+        interval: tuple (min_x, max_x) setting the interval of values of x
+        x0: centre of the gaussian distribution
+        sigma2: standard deviation of the distribution
+        delta: amplitude of the noise
+
+        Routine that generates a set of ndata (x,y) points that verify the
+        equation
+        y = exp(-(x - x0)^2 / 2 * sigma2) and introducing noise.
+
+        Returns the set of data in 2d numpy array of shape ndata x 2.
+    """
+    x = np.linspace(interval[0], interval[1], ndata)
+    y = np.exp(-(x - x0)**2 / (2 * sigma2)) + np.random.normal(0, delta, ndata)
+    return np.vstack((x, y))
+
+
+# Activation function
+def g(z: float) -> float:
+    """
+        Calculates tanh(z) for a given z
+
+        z: input to the activation function
+        return: tanh(z)
+    """
+    return np.tanh(z)
+
+
+# Derivative of the activation function
+def dg(z: float) -> float:
+    """
+        Calculates the derivative of tanh(z) for a given z
+
+        z: input to the activation function
+        return: derivative of tanh(z)
+    """
+    return 1 - np.tanh(z)**2
     
-    :param args : a list of command line arguments
-    :return : True if the argument is valid, False otherwise
+
+# Forward method for the neural network of fig 1.5
+def NN2_forward(x: float, w1: np.array[float], b1: np.array[float], w2: np.array[float]) -> float:
     """
-    if len(sys.argv) != 2 or not sys.argv[1].isdigit() or int(sys.argv[1]) not in range(1, 6):
-        raise ValueError("Usage: python fractal.py <opdracht>"\
-                         "\n<opdracht> should be an integer between 1 and 5")
-    return True
+        x: input (a single scalar)
+        w1: array of weights of the hidden layer
+        b1: array of biases of the hidden layer
+        w2: array of weights of the output layer
+
+        Routine that returns the output of the NN of fig 1.5.
+        The output should be a single scalar, just like the input x
+    """
+                            # calculate weighted sum of inputs,
+    z1 = np.dot(w1, x) + b1 # a.k.a. the input of the hidden layer
+    a1 = g(z1)              # apply the activation function
+    z2 = np.dot(w2, a1)     # calculate the output of the NN
+    return z2               # return the output of the NN (predictions)   
+
+
+# Forward method for the neural network of fig 1.5
+def NN2_error(
+        inputs: np.array[float],
+        targets: np.array[float],
+        w1: np.array[float],
+        b1: np.array[float],
+        w2: np.array[float]):
+    """
+        Calculate the error of the neural network of fig 1.5
+
+        inputs: inputs to the NN
+        targets: targets of the NN
+        w1: array of weights of the hidden layer
+        b1: array of biases of the hidden layer
+        w2: array of weights of the output layer
+    """
+    predictions = np.array([NN2_forward(x, w1, b1, w2) for x in inputs])
+    residuals = predictions - targets
+    return 0.5 * np.mean(residuals**2)
+
+
+# Method that performs a training step of the neural network of fig 1.5
+def NN2_train(
+        inputs: np.array[float],
+        targets: np.array[float],
+        w1: np.array[float],
+        b1: np.array[float],
+        w2: np.array[float],
+        dw1: np.array[float],
+        db1: np.array[float],
+        dw2: np.array[float],
+        lr: float,
+        momentum: float,
+        wd: float
+    ) -> Tuple[np.array[float], np.array[float], np.array[float],
+               np.array[float], np.array[float], np.array[float]]:
+    """
+        Function that backpropagates the errors on the hidden nodes and returns
+        the updated values of their weights and biases as a tuple of arrays
+
+        inputs: inputs to the NN
+        targets: targets of the NN
+        w1: array of weights of the hidden layer
+        b1: array of biases of the hidden layer
+        w2: array of weights of the output layer
+        dw1: array of last updates of the hidden layer weights
+        db1: array of last updates of the hidden layer biases
+        dw2: array of last updates of the output layer weights
+        lr: learning rate
+        momentum: momentum
+        wd: weight decay
+    """
+    N_hidden = w1.shape[0]  # number of hidden nodes
+    N_out = w2.shape[0]     # number of output nodes
+                            # init gradients
+    grad_w1 = np.zeros(N_hidden)
+    grad_b1 = np.zeros(N_out)
+    grad_w2 = np.zeros(N_out)
+                            # forward pass and backprop, where
+                            # u is input, y is target
+    for u, y in zip(inputs, targets):
+        z1 = w1 * u + b1    # weighted sum of inputs
+        a1 = g(z1)          # apply the activation function
+        y_hat = w2 * a1     # calculate output
+
+        error = y_hat - y   # calculate error
+                            # backpropagate the error
+        grad_w2 += error * a1
+        grad_b1 += error * w2 * dg(z1)
+        grad_w1 += error * w2 * dg(z1) * u
+
+    grad_w1 /= len(inputs)  # average the gradients
+    grad_b1 /= len(inputs)
+    grad_w2 /= len(inputs)
+    
+    grad_w1 += wd * w1      # add weight decay
+    grad_w2 += wd * w2
+                            # add momentum (velocity)
+    dw1_new = momentum * db1 - lr * grad_b1
+    db1_new = momentum * dw1 - lr * grad_w1
+    dw2_new = momentum * dw2 - lr * grad_w2
+                            # update the weights
+    w1_new = w1 + dw1_new
+    b1_new = b1 + db1_new
+    w2_new = w2 + dw2_new
+
+    return (w1_new, b1_new, w2_new, dw1_new, db1_new, dw2_new)
+
+
+def execute_part4():
+    # Set the number of data and the interval for the x axis
+    global ngdata
+    ngdata = 500
+    global ginterval
+    ginterval = (-2.5, 2.5)
+
+    # Set the amplitude of the noise
+    global gdelta
+    gdelta = 0.1
+
+    # Generate the data
+    global gaussian_data
+    gaussian_data = generate_gaussian_data(ngdata, ginterval, 0, 0.5, gdelta)
+
+    # Then, plot the data
+    plt.figure()
+    plt.plot(gaussian_data[0], gaussian_data[1], 'o', label=r'$(x_i,y_i)$')
+    plt.title('Gaussian dataset')
+    plt.xlabel('x')
+    plt.ylabel('y')
+    xs = np.linspace(ginterval[0], ginterval[1], 100)
+    plt.plot(xs, np.exp(-(xs)**2), '-', label=r'$y = e^{-x^2}$')
+    plt.legend()
+    plt.show()
+
+    # Now, for different numbers of hidden layers
+    final_errors = []
+    final_fits = {}
+    ns = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    for n in ns:
+        nhidden = n
+        # And generate starting values for the hidden layer weights and biases
+        # with the Xavier initialization
+        global w1, b1, w2
+        w1 =  # YOUR CODE GOES HERE
+        b1 =  # YOUR CODE GOES HERE
+        w2 =  # YOUR CODE GOES HERE
+        dw1 =  # YOUR CODE GOES HERE
+        db1 =  # YOUR CODE GOES HERE
+        dw2 =  # YOUR CODE GOES HERE
+
+        # Set a value for the learning rate, momentum and weight decay
+        learningrate = 0.1
+        momentum = 0.9
+        weight_decay = 0.0001
+
+        # Then, train the NN for nepochs epochs (epoch=a training step)
+        nepochs = 1000
+        errors = [NN2_error(gaussian_data[0], gaussian_data[1], w1, b1, w2)]
+        for epoch in range(nepochs):
+            # For each training step, update your weights
+
+            # Update the list of errors
+            errors.append(NN2_error(gaussian_data[0], gaussian_data[1], w1, b1, w2))
+
+        # Plot the errors and w1 along the training
+        plt.figure()
+        plt.title('Training with {} hidden layers'.format(nhidden))
+        plt.xlabel('Epoch')
+        plt.ylabel('Error')
+        plt.plot(range(len(errors)), errors)
+        final_errors.append(errors[-1])
+        plt.show()
+
+        # Then, plot the dataset with the fitted model
+        plt.figure()
+        plt.title('Curve fit with {} hidden layers'.format(nhidden))
+        plt.xlabel('x')
+        plt.ylabel('y')
+        plt.plot(gaussian_data[0], gaussian_data[1], 'o', label=r'(x_i,y_i)')
+        xs = np.linspace(ginterval[0], ginterval[1], 100)
+        y_pred = []
+        for x in xs:
+            y_pred.append(NN2_forward(x, w1, b1, w2))
+        final_fits[n] = np.array(y_pred)
+        plt.plot(xs, np.array(y_pred), '-', label=r'NN')
+        plt.show()
+
+    # Plot the errors trend
+    plt.figure()
+    plt.xlabel('N hidden nodes')
+    plt.ylabel('Error')
+    plt.plot(ns, final_errors, '-o')
+    plt.show()
+    # And the fits
+    plt.figure()
+    plt.xlabel('Curve fits')
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.plot(gaussian_data[0], gaussian_data[1], 'o', label=r'(x_i,y_i)')
+    xs = np.linspace(ginterval[0], ginterval[1], 100)
+    for n in ns:
+        plt.plot(xs, final_fits[n], '-', label=r'n = {}'.format(n))
+    plt.legend()
+    plt.show()
     
 
 def main():
@@ -487,8 +538,8 @@ def main():
     execute_part1()
     execute_part2()
     execute_part3()
+    execute_part4()
    
-
 
 if __name__ == "__main__":
     main()
