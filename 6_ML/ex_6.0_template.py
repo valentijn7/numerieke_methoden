@@ -328,7 +328,7 @@ def dg(z: float) -> float:
     
 
 # Forward method for the neural network of fig 1.5
-def NN2_forward(x: float, w1: np.array[float], b1: np.array[float], w2: np.array[float]) -> float:
+def NN2_forward(x: float, w1: np.ndarray[float], b1: np.ndarray[float], w2: np.ndarray[float]) -> float:
     """
         x: input (a single scalar)
         w1: array of weights of the hidden layer
@@ -338,8 +338,7 @@ def NN2_forward(x: float, w1: np.array[float], b1: np.array[float], w2: np.array
         Routine that returns the output of the NN of fig 1.5.
         The output should be a single scalar, just like the input x
     """
-                            # calculate weighted sum of inputs,
-    z1 = np.dot(w1, x) + b1 # a.k.a. the input of the hidden layer
+    z1 = w1 * x + b1        # calculate weighted sum of an input
     a1 = g(z1)              # apply the activation function
     z2 = np.dot(w2, a1)     # calculate the output of the NN
     return z2               # return the output of the NN (predictions)   
@@ -347,11 +346,11 @@ def NN2_forward(x: float, w1: np.array[float], b1: np.array[float], w2: np.array
 
 # Forward method for the neural network of fig 1.5
 def NN2_error(
-        inputs: np.array[float],
-        targets: np.array[float],
-        w1: np.array[float],
-        b1: np.array[float],
-        w2: np.array[float]):
+        inputs: np.ndarray[float],
+        targets: np.ndarray[float],
+        w1: np.ndarray[float],
+        b1: np.ndarray[float],
+        w2: np.ndarray[float]):
     """
         Calculate the error of the neural network of fig 1.5
 
@@ -368,19 +367,19 @@ def NN2_error(
 
 # Method that performs a training step of the neural network of fig 1.5
 def NN2_train(
-        inputs: np.array[float],
-        targets: np.array[float],
-        w1: np.array[float],
-        b1: np.array[float],
-        w2: np.array[float],
-        dw1: np.array[float],
-        db1: np.array[float],
-        dw2: np.array[float],
+        inputs: np.ndarray[float],
+        targets: np.ndarray[float],
+        w1: np.ndarray[float],
+        b1: np.ndarray[float],
+        w2: np.ndarray[float],
+        dw1: np.ndarray[float],
+        db1: np.ndarray[float],
+        dw2: np.ndarray[float],
         lr: float,
         momentum: float,
         wd: float
-    ) -> Tuple[np.array[float], np.array[float], np.array[float],
-               np.array[float], np.array[float], np.array[float]]:
+    ) -> Tuple[np.ndarray[float], np.ndarray[float], np.ndarray[float],
+               np.ndarray[float], np.ndarray[float], np.ndarray[float]]:
     """
         Function that backpropagates the errors on the hidden nodes and returns
         the updated values of their weights and biases as a tuple of arrays
@@ -408,7 +407,8 @@ def NN2_train(
     for u, y in zip(inputs, targets):
         z1 = w1 * u + b1    # weighted sum of inputs
         a1 = g(z1)          # apply the activation function
-        y_hat = w2 * a1     # calculate output
+                            # calculate output
+        y_hat = NN2_forward(u, w1, b1, w2)
 
         error = y_hat - y   # calculate error
                             # backpropagate the error
@@ -469,12 +469,15 @@ def execute_part4():
         # And generate starting values for the hidden layer weights and biases
         # with the Xavier initialization
         global w1, b1, w2
-        w1 =  # YOUR CODE GOES HERE
-        b1 =  # YOUR CODE GOES HERE
-        w2 =  # YOUR CODE GOES HERE
-        dw1 =  # YOUR CODE GOES HERE
-        db1 =  # YOUR CODE GOES HERE
-        dw2 =  # YOUR CODE GOES HERE
+        # Init weights (Xavier) and biases (zeroed)
+        sigma = np.sqrt(2 / (nhidden + 1)) # (9.1 in the reader)
+        w1 =  np.random.normal(0, sigma, nhidden)
+        b1 =  np.zeros(nhidden)
+        w2 =  np.random.normal(0, sigma, nhidden)
+        # Init velocities
+        dw1 =  np.zeros(nhidden)
+        db1 =  np.zeros(nhidden)
+        dw2 =  np.zeros(nhidden)
 
         # Set a value for the learning rate, momentum and weight decay
         learningrate = 0.1
@@ -486,7 +489,10 @@ def execute_part4():
         errors = [NN2_error(gaussian_data[0], gaussian_data[1], w1, b1, w2)]
         for epoch in range(nepochs):
             # For each training step, update your weights
-
+            w1, b1, w2, dw1, db1, dw2 = NN2_train(
+                gaussian_data[0], gaussian_data[1], w1, b1, w2, dw1, db1, dw2,
+                learningrate, momentum, weight_decay
+            )
             # Update the list of errors
             errors.append(NN2_error(gaussian_data[0], gaussian_data[1], w1, b1, w2))
 
@@ -533,8 +539,6 @@ def execute_part4():
     
 
 def main():
-    # if validate_args(sys.argv):
-    #     part = int(sys.argv[1])
     execute_part1()
     execute_part2()
     execute_part3()
