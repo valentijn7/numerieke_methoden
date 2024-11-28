@@ -200,7 +200,8 @@ def NN1_forward(x: float, w: float, b: float) -> float:
         w: weight of the hidden node
         b: bias of the hidden node
 
-        Routine that returns the output of the simple one-node NN of fig 1.3.
+        Routine that returns the output of the simple one-node NN of fig 1.3,
+        while using a linear activation function (a.k.a. identity function).
     """
     return w * x + b
     
@@ -532,9 +533,13 @@ def execute_part4():
     
 
 def main():
+    print('Starting part 1')
     execute_part1()
+    print('Starting part 2')
     execute_part2()
+    print('Starting part 3')
     execute_part3()
+    print('Starting part 4')
     execute_part4()
    
 
