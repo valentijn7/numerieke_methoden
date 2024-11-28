@@ -396,42 +396,35 @@ def NN2_train(
         momentum: momentum
         wd: weight decay
     """
-    N_hidden = w1.shape[0]  # number of hidden nodes
-    N_out = w2.shape[0]     # number of output nodes
-                            # init gradients
-    grad_w1 = np.zeros(N_hidden)
-    grad_b1 = np.zeros(N_out)
-    grad_w2 = np.zeros(N_out)
-                            # forward pass and backprop, where
-                            # u is input, y is target
-    for u, y in zip(inputs, targets):
-        z1 = w1 * u + b1    # weighted sum of inputs
-        a1 = g(z1)          # apply the activation function
-                            # calculate output
-        y_hat = NN2_forward(u, w1, b1, w2)
+    w1_new = w1         # init weights, biases, gradients
+    w2_new = w2
+    b1_new = b1
 
-        error = y_hat - y   # calculate error
-                            # backpropagate the error
-        grad_w2 += error * a1
-        grad_b1 += error * w2 * dg(z1)
-        grad_w1 += error * w2 * dg(z1) * u
+    dJdw1 = 0
+    dJdw2 = 0
+    dJdb1 = 0
+                        # get predictions with NN2_forward() 
+    y_hats = np.array([NN2_forward(n, w1, b1, w2) for n in inputs])
+                        # calculate gradients
+    for x, y, y_hat in zip(inputs, targets, y_hats):
+        output = w1 * x + b1
+        dJdw1 += (y_hat - y) * w2 * dg(output) * x
+        dJdw2 += (y_hat - y) * g(output)
+        dJdb1 += (y_hat - y) * w2 * dg(output)
+                        # average the gradients
+    dJdw1 /= len(inputs)
+    dJdw2 /= len(inputs)
+    dJdb1 /= len(inputs)
+                        # update weights and biases, incl. momentum and weight decay
+    dw1_new = -lr * dJdw1 + (momentum * dw1 - lr * wd * w1)
+    dw2_new = -lr * dJdw2 + (momentum * dw2 - lr * wd * w2)
+    db1_new = -lr * dJdb1 + (momentum * db1)
 
-    grad_w1 /= len(inputs)  # average the gradients
-    grad_b1 /= len(inputs)
-    grad_w2 /= len(inputs)
-    
-    grad_w1 += wd * w1      # add weight decay
-    grad_w2 += wd * w2
-                            # add momentum (velocity)
-    dw1_new = momentum * db1 - lr * grad_b1
-    db1_new = momentum * dw1 - lr * grad_w1
-    dw2_new = momentum * dw2 - lr * grad_w2
-                            # update the weights
     w1_new = w1 + dw1_new
-    b1_new = b1 + db1_new
     w2_new = w2 + dw2_new
+    b1_new = b1 + db1_new
 
-    return (w1_new, b1_new, w2_new, dw1_new, db1_new, dw2_new)
+    return (w1_new, b1_new, w2_new, dw1_new, db1_new, dw2_new);
 
 
 def execute_part4():
