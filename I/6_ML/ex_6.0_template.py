@@ -155,7 +155,8 @@ def execute_part2():
                     # numerical instability, i.e. divergence
 
     # Then, perform gradient descent steps until convergence
-    convergence_treshold = 0.000001
+    convergence_threshold = 0.000001
+    # convergence_threshold = 0.001 # uncomment to get second plot of report
     errors = [J(data, a_pred, b_pred)]
     while True:
         a_pred, b_pred = gradient_descent_step(
@@ -163,7 +164,7 @@ def execute_part2():
         )
         errors.append(J(data, a_pred, b_pred))
 
-        if(np.abs(errors[-1] - errors[-2]) < convergence_treshold):
+        if(np.abs(errors[-1] - errors[-2]) < convergence_threshold):
             break
 
     # Plot the errors along the evolution

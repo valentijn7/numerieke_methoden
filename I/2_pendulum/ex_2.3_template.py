@@ -21,6 +21,7 @@ from matplotlib import animation
 plt.close('all')
 
 n_frames = 10001
+# n_frames = 500 # uncomment to generate other plot of the report
 t = np.linspace(0, 100, n_frames)
 
 dt = t[1] - t[0]  # timestep
