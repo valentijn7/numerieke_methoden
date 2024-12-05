@@ -31,7 +31,7 @@ def RK4(
 
 def derivatives(
         current_state: np.array,
-        current_time: float
+        current_ksi: float
     ) -> np.array:
     """ 
     Specific to the white dwarf problem, it returns the derivatives:
@@ -39,11 +39,11 @@ def derivatives(
         - dmu/d[ksi] = x^3 * [ksi]^2.
 
     :param current_state: current state of the system (dependent variable)
-    :param current_time: current time of the system (independent variable)
+    :param current_ksi: current time of the system (independent variable)
     :return: derivatives of the dependent variables
     """
     x, mu = current_state
-    ksi = current_time
+    ksi = current_ksi
 
     if ksi == 0:            # avoid division by zero at ksi = 0
         dx_dksi = 0
@@ -70,48 +70,59 @@ def initial_conditions(
 
 
 def integrate_white_dwarf(
-        x_center: float,
         step_size: float,
-        epsilon: float = 1e-12
+        x_center: float,
+        epsilon: float = 1e-12,
+        verbose: bool = False
     ) -> Tuple[np.array, np.array, np.array]:
     """ Actually integrates the white dwarf problem
     
     :param x_center: x at ksi = 0
     :param step_size: step size for the integration
     :param epsilon: threshold for the integration
+    :param verbose: whether to do some print statements
+    :return: tuple containing the time, x, and mu values
     """                     # init; get initial conditions; init
-    x_i = []                # x indices
-    x = []                  # x values
+    ksi_s = []              # x indices
+    x_s = []                # x values
     mu = []                 # mu values
-    x_i_start, mu_start = initial_conditions(x_center, step_size)
-    x_i.append(step_size)
-    x.append(x_i_start)
+    x_start, mu_start = initial_conditions(x_center, step_size)
+    ksi_s.append(step_size)
+    x_s.append(x_start)
     mu.append(mu_start)
                             # set current state and time
-    current_state = np.array([x[-1], mu[-1]])
-    current_time = x_i[-1]
-                            # iterate until x_i > epsilon
+    current_state = np.array([x_s[-1], mu[-1]])
+    current_ksi = ksi_s[-1]
+                            # iterate until x < epsilon
     idx = 0
+    refinements = 0
+    max_refinements = 25
     while True:
-        next_state = RK4(current_state, current_time, step_size, derivatives)
-
+        next_state = RK4(current_state, current_ksi, step_size, derivatives)
+                            # when x < epsilon, do the last step over
+                            # with a smaller step size max_refinements times
         if next_state[0] < epsilon:
-            break
-        
-        current_time += step_size
-        x_i.append(current_time)
-        # print(next_state[0])
-        x.append(next_state[0])
+            if refinements < max_refinements:
+                step_size /= 2
+                refinements += 1
+                continue
+            else:
+                break
+
+        current_ksi += step_size
+        ksi_s.append(current_ksi)
+        x_s.append(next_state[0])
         mu.append(next_state[1])
 
         current_state = next_state
-        
-        # if idx % 1 == 0: 
-        #     print(f't: {current_time}; x: {x[-1]}; mu: {mu[-1]}')
-        # idx += 1
 
-    #! TODO Maak de stopconditie wat preciezer (voor de extra opdracht)
-    return np.array(x_i), np.array(x), np.array(mu)
+        if verbose:         # adjust '1' here for printing frequency
+            print('\n\n') if idx == 0 else None
+            if idx % 1 == 0: 
+                print(f't: {current_ksi}; x: {x[-1]}; mu: {mu[-1]}')
+            idx += 1
+    
+    return np.array(ksi_s), np.array(x_s), np.array(mu)
 
 
 def A() -> float:
@@ -156,27 +167,39 @@ def alpha_m() -> float:
     return 4 * np.pi * mu_e * A() * alpha_r()**3
 
 
-def AU() -> float:
-    """ Callable for atmospheric unit
+def SM() -> float:
+    """ Callable for solar mass
 
-    :return: one AU
+    :return: one solar mass
     """
     return 1.9891 * 10**30
 
 
-def convert_x(
+def rho_to_x(
         rho_center: float
     ) -> float:
-    """ Converts rho [km/m^3] to its dimensionless counterpart
+    """ Converts rho [km/m^3] to its dimensionless counterpart (x)
     
     :param rho_center: central density of the white dwarf
     :return: dimensionless rho
     """
     mu_e = 2                # mean number of nucleons per electron
-    return np.cbrt(rho_center / A() * mu_e)
-    
+    return np.cbrt(rho_center / (A() * mu_e))
 
-def convert_step_size(
+
+def x_to_rho(
+        x: float
+    ) -> float:
+    """ Converts dimensionless rho to its real counterpart
+
+    :param x: dimensionless rho
+    :return: rho [km/m^3]
+    """
+    mu_e = 2                # mean number of nucleons per electron
+    return A() * mu_e * x**3
+            
+
+def step_size_to_ksi(
         r: float,
 ) -> float:
     """ Converts step size [km] to its dimensionless counterpart
@@ -187,48 +210,64 @@ def convert_step_size(
     return r * 1000 / alpha_r()
 
 
+def ksi_to_step_size(
+        ksi: float
+) -> float:
+    """ Converts dimensionless step size to its real counterpart
+    
+    :param ksi: dimensionless step size
+    :return: step size in km
+    """
+    return ksi * alpha_r() / 1000
+
+
 def main():
-    plt.figure(figsize = (8, 6))
+    initial_values = np.array([[5, 300], [6, 200], [7, 150], [8, 80], [9, 20],
+                               [10, 10], [11, 5], [12, 3], [13, 1], [14, 0.5]])
+    colours = ('#FFCFEF', '#0A97B0', '#AE445A', '#2A3335', '#F29F58',
+               '#AB4459', '#441752', '#355F2E', '#AE445A', '#A27B5C')
 
-    initial_values = np.array([[5, 300], [6, 200], [7, 150], [8, 80], [9, 20], [10, 10], [11, 5], [12, 1], [18, 1]])
-    colours = ('#FFCFEF', '#0A97B0', '#AE445A', '#2A3335', '#F29F58', '#AB4459', '#441752', '#355F2E', '#FFFFFF')
+    ksi_s_s = []
+    x_s = []
+    mu_s = []
+    final_densities = []
+    final_radii = []              
+                            # iterate over initial values and store results
+    for idx in initial_values:
+        ksi_s, x, mu = integrate_white_dwarf(step_size_to_ksi(float(idx[1])),
+                                             rho_to_x(10**float(idx[0])),
+                                             1e-12)
+        ksi_s_s.append(ksi_s)
+        x_s.append(x)
+        mu_s.append(mu)
+        final_radii.append(ksi_to_step_size(ksi_s[-1]))
+        final_densities.append(x_to_rho(x[-1]))
 
-    # one = 8
-    # two = 80
-    # x_i, x, mu = integrate_white_dwarf(convert_x(10**one), convert_step_size(two))
-    # plt.plot(alpha_m() * mu / AU(),
-    #          alpha_r() * x,
-    #         #  color = col,
-    #          label = f'x; x_c = {one}')
-    # plt.xlabel('AU')
-    # plt.ylabel('radius')
-
-    for idx, col in zip(initial_values, colours):
-        x_i, x, mu = integrate_white_dwarf(convert_x(10**idx[0]), convert_step_size(idx[1]))
-        # plt.plot(x_i,
-        #          alpha_r() * x,
-        #          color = col,
-        #          label = f'x; x_c = {idx[0]}')
-        # plt.plot(x_i,
-        #          alpha_m() * mu / AU(),
-        #          color = col,
-        #          label = f'mu; x_c = {idx[0]}',
-        #          linestyle = '--')
-        # plt.plot(alpha_m() * mu[-1] / AU(),
-        #          alpha_r() * x[-1],
-        #          color = col,
-        #          label = f'x; x_c = {idx[0]}')
-        plt.plot(alpha_m() * mu / AU(),
-             alpha_r() * x,
-             color = col,
-             label = f'x; x_c = {idx[0]}')
-        
-    plt.xlabel('AU')
-    plt.ylabel('radius')
+                            # plot density as function of the radius
+    for ksi_s, x, mu, col, idx in zip(ksi_s_s, x_s, mu_s, colours, initial_values):
+        plt.plot(final_radii,
+                 final_densities,
+                 color = col,
+                 label = f'rho_c = 10^{int(idx[0])}')
+    plt.xlabel('radius [km]')
+    plt.ylabel('density [km/m^3]')
+    # plt.ylim(-0.1, plt.ylim()[1])
     plt.legend()
     plt.grid()
-    plt.show()
+    plt.show() 
 
+                            # plot radius in km versus mass in units of solar mass
+    for ksi_s, x, mu, col, idx in zip(ksi_s_s, x_s, mu_s, colours, initial_values):
+        plt.plot(alpha_m() * mu / SM(),
+                 ksi_to_step_size(ksi_s),
+                 color = col,
+                 label = f'rho_c = 10^{int(idx[0])}')
+    plt.xlabel('mass [solar mass]')
+    plt.ylabel('radius [km]')
+    plt.ylim(bottom = 0)
+    plt.legend()
+    plt.grid()
+    plt.show()    
 
 
 if __name__ == '__main__':
