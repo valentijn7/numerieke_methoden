@@ -33,8 +33,7 @@ def derivatives(
         current_state: np.array,
         current_ksi: float
     ) -> np.array:
-    """ 
-    Specific to the white dwarf problem, it returns the derivatives:
+    """ Specific to the white dwarf problem, it returns the derivatives:
         - dx/d[ksi] = -mu/[ksi]^2 * sqrt(1 + x^2) / x; and
         - dmu/d[ksi] = x^3 * [ksi]^2.
 
