@@ -277,25 +277,25 @@ def main():
     plt.legend()
     plt.grid()
     plt.show() 
-                            # plot radius in km as function of mass in solar masses
-    for ksi, x, mu, col, idx in zip(ksi_s, x_s, mu_s, colours, initial_values):
-        SMs = [mu_to_SM(mu_val) for mu_val in mu]
-        radii = [ksi_to_radius(ksi_val) for ksi_val in ksi]
-        plt.plot(SMs,
-                 radii,
-                 color = col,
-                 label = f'rho_c = 10^{int(idx[0])}')
-    plt.xlabel('mass [solar masses]')
-    plt.ylabel('radius [km]')
-    plt.ylim(bottom = 0)
-    plt.legend()
-    plt.grid()
-    plt.show()  
+    #                         # plot radius in km as function of mass in solar masses
+    # for ksi, x, mu, col, idx in zip(ksi_s, x_s, mu_s, colours, initial_values):
+    #     SMs = [mu_to_SM(mu_val) for mu_val in mu]
+    #     radii = [ksi_to_radius(ksi_val) for ksi_val in ksi]
+    #     plt.plot(SMs,
+    #              radii,
+    #              color = col,
+    #              label = f'rho_c = 10^{int(idx[0])}')
+    # plt.xlabel('mass [solar masses]')
+    # plt.ylabel('radius [km]')
+    # plt.ylim(bottom = 0)
+    # plt.legend()
+    # plt.grid()
+    # plt.show()  
 
     plt.plot(final_masses,
              final_radii,
-             color = col,
-             label = f'rho_c = 10^{int(idx[0])}')
+             marker = 'o',
+             color = '#441752')
     plt.xlabel('mass [solar masses]')
     plt.ylabel('radius [km]')
     plt.ylim(bottom = 0)
