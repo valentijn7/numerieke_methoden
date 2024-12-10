@@ -31,6 +31,7 @@ def RK4(
 def derivatives(
         state: np.array,
         time: float,
+        c_s, Dict[str, float]
     ) -> np.array:
     """ Specific to the two-body problem, using the equations:
         - (26) d vec(r)i/dt = vi; and
@@ -40,14 +41,27 @@ def derivatives(
 
     :param state: current state of the system (dependent variable)
     :param time: current time of the system (independent variable)
+    :param c_s: dictionary with constants
     :return: derivatives of the dependent variables
     """
-    x1, y1, x2, y2, vx1, vy1, vx2, vy2 = state
+    G, M1, M2 = c_s['G'], c_s['M1'], c_s['M2']
+    rx, ry, vx, vy = state
+    distance_cubed = (rx**2 + ry**2)**(3/2)
+
+    factor = -(G * M2 / (1 + M1 / M2))
+    dvx_dt = factor * (rx / distance_cubed)
+    dvy_dt = factor * (ry / distance_cubed)
+
+    return np.array([vx, vy, dvx_dt, dvy_dt])
 
 
 def main():
-    # initial conditions:          x1, y1, x2, y2, vx1, vy1, vx2, vy2      
-    initial_conditions = np.array([0, 0, 0, 0, 0, 0, 0, 0])
+    constants = {
+        'G': 6.67430e-11,  
+        'M1': 5.972e24,  
+        'M2': 1.989e30,
+    }
+
 
 
 if __name__ == '__main__':
