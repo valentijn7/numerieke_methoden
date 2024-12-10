@@ -233,6 +233,8 @@ def main():
                               [10, 10], [11, 5], [12, 3], [13, 1], [14, 0.5]])
     colours = ('#FFCFEF', '#0A97B0', '#AE445A', '#2A3335', '#F29F58',
                '#AB4459', '#441752', '#355F2E', '#AE445A', '#A27B5C')
+    # initial_values = ([[13, 1], [14, 0.5]])
+    # colours = ('#FFCFEF', '#0A97B0')
 
     ksi_s = []
     x_s = []
@@ -266,11 +268,11 @@ def main():
         radii = [ksi_to_radius(ksi_val) for ksi_val in ksi]
         rhos = [x_to_rho(x_val) for x_val in x]
         plt.plot(radii,
-                 rhos,
+                 np.log10(rhos),
                  color = col,
                  label = f'rho_c = 10^{int(idx[0])}')
     plt.xlabel('radius [km]')
-    plt.ylabel('density [km/m^3]')
+    plt.ylabel('log(density [km/m^3])')
     # plt.ylim(-0.1, plt.ylim()[1])
     plt.legend()
     plt.grid()
@@ -288,7 +290,18 @@ def main():
     plt.ylim(bottom = 0)
     plt.legend()
     plt.grid()
-    plt.show()    
+    plt.show()  
+
+    plt.plot(final_masses,
+             final_radii,
+             color = col,
+             label = f'rho_c = 10^{int(idx[0])}')
+    plt.xlabel('mass [solar masses]')
+    plt.ylabel('radius [km]')
+    plt.ylim(bottom = 0)
+    plt.legend()
+    plt.grid()
+    plt.show()  
 
 
 if __name__ == '__main__':
