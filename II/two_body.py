@@ -258,6 +258,12 @@ def calculate_and_plot_all(constants: Dict[str, float]) -> None:
 
 
 def main():
+    #! TODO's:
+    # - maak plotjes voor langere tijdsperiodes met de periode
+    # - maak een plotje met tijdsstap versus periode: wordt deze dan accurater?
+    # - zoek een verklaring op voor waarom de afwijking bij de aarde het grootste is
+    # - zie de reader voor wat er in de report moet komen
+
     earth_sun_constants = {
         'G': 6.67430e-11,   # gravitational constant 
         'M1': 5.972e24,     # mass of the Earth
