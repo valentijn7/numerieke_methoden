@@ -262,6 +262,7 @@ def main():
     # - maak plotjes voor langere tijdsperiodes met de periode
     # - maak een plotje met tijdsstap versus periode: wordt deze dan accurater?
     # - zoek een verklaring op voor waarom de afwijking bij de aarde het grootste is
+    #    -> mogelijk antwoord: probeer andere beginwaarden, zoals die van minor axis
     # - zie de reader voor wat er in de report moet komen
 
     earth_sun_constants = {
