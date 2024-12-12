@@ -229,6 +229,8 @@ def mu_to_SM(
 
 
 def main():
+    # Uncomment the stopping condition modification above to get report Figure 2.
+
     initial_values = np.array([[5, 300], [6, 200], [7, 150], [8, 80], [9, 20],
                               [10, 10], [11, 5], [12, 3], [13, 1], [14, 0.5]])
     colours = ('#FFCFEF', '#0A97B0', '#AE445A', '#2A3335', '#F29F58',
@@ -261,7 +263,7 @@ def main():
         print()
 
 
-    plt.figure(figsize = (8, 6))
+    plt.figure(figsize = (6, 6))
                             # plot density as function of the radius
     for ksi, x, mu, col, idx in zip(ksi_s, x_s, mu_s, colours, initial_values):
         # first calculate the radius and rho by applying the conversion iteratively
@@ -271,11 +273,14 @@ def main():
                  np.log10(rhos),
                  color = col,
                  label = f'rho_c = 10^{int(idx[0])}')
-    plt.xlabel('radius [km]')
-    plt.ylabel('log(density [km/m^3])')
+    plt.xlabel('radius [km]', fontsize = 14)
+    plt.ylabel('log(density [km/m^3])', fontsize = 14)
+    plt.xticks(fontsize = 14)
+    plt.yticks(fontsize = 14)
     # plt.ylim(-0.1, plt.ylim()[1])
     plt.legend()
     plt.grid()
+    plt.tight_layout()
     plt.show() 
     #                         # plot radius in km as function of mass in solar masses
     # for ksi, x, mu, col, idx in zip(ksi_s, x_s, mu_s, colours, initial_values):
@@ -296,11 +301,14 @@ def main():
              final_radii,
              marker = 'o',
              color = '#441752')
-    plt.xlabel('mass [solar masses]')
-    plt.ylabel('radius [km]')
+    plt.xlabel('mass [solar masses]', fontsize = 14)
+    plt.ylabel('radius [km]', fontsize = 14)
+    plt.xticks(fontsize = 14)
+    plt.yticks(fontsize = 14)
     plt.ylim(bottom = 0)
-    plt.legend()
+    # plt.legend()
     plt.grid()
+    plt.tight_layout()
     plt.show()  
 
 
