@@ -209,11 +209,12 @@ def calculate_and_plot_all(constants: Dict[str, float]) -> None:
     rx0, ry0 = constants['R'], 0
     vx0, vy0 = 0, constants['v']
     dt = 3600
-    n = int(365.25 * 24) * 5
+    total_years = 5
+    n = int(365.25 * 24) * total_years
 
     r_light, v_light = simulate_light(rx0, ry0, vx0, vy0, dt, n, constants)
     r_heavy, v_heavy = simulate_heavy(r_light, v_light, constants)
-    print(f'Back at starting position at {check_when_back(r_light)} days')
+    print(f'Back at starting position at {check_when_back(r_light):.2f} days')
 
     initial_energy = calculate_energy(r_light[0, 0], r_light[0, 1],
                                       v_light[0, 0], v_light[0, 1],
@@ -259,8 +260,13 @@ def calculate_and_plot_all(constants: Dict[str, float]) -> None:
 
 def main():
     #! TODO's:
-    # - maak plotjes voor langere tijdsperiodes met de periode
+    # - maak plotjes voor langere tijdsperiodes met de periode:
+    #    dus plot de tijd versus de afstand van de aarde tot de zon,
+    #    en voeg evt ook de afstand van de maan tot de aarde toe en de afstand van Mercurius tot de zon
     # - maak een plotje met tijdsstap versus periode: wordt deze dan accurater?
+    #   -> mogelijk antwoord: ja, want de afwijking wordt kleiner, en met het plotje
+    #      kunnen we wellicht 0-1 plotten waar 1 de ideale waarde is, en dan voor elke combinatie
+    #      van tijdsstap en periode zien we ze dichter bij 1 komen
     # - zoek een verklaring op voor waarom de afwijking bij de aarde het grootste is
     #    -> mogelijk antwoord: probeer andere beginwaarden, zoals die van minor axis
     # - zie de reader voor wat er in de report moet komen
