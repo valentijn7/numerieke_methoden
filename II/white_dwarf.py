@@ -96,7 +96,9 @@ def integrate_white_dwarf(
     while True:
         next_state = RK4(current_state, current_ksi, dksi, derivatives)
                             # when x < epsilon, do the last step over
-                            # with a smaller step size max_refinements times
+                            # with a smaller step size max_refinements times;
+                            # uncomment the stopping condition (keep break-s)
+                            # to get the report figure without stopping condition
         if next_state[0] < epsilon:
             if refinements < max_refinements:
                 dksi /= 2
@@ -270,14 +272,14 @@ def main():
         radii = [ksi_to_radius(ksi_val) for ksi_val in ksi]
         rhos = [x_to_rho(x_val) for x_val in x]
         plt.plot(radii,
-                 np.log10(rhos),
+                 rhos,
                  color = col,
                  label = f'rho_c = 10^{int(idx[0])}')
     plt.xlabel('radius [km]', fontsize = 14)
     plt.ylabel('log(density [km/m^3])', fontsize = 14)
     plt.xticks(fontsize = 14)
     plt.yticks(fontsize = 14)
-    # plt.ylim(-0.1, plt.ylim()[1])
+    plt.yscale('log')
     plt.legend()
     plt.grid()
     plt.tight_layout()
