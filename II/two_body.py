@@ -172,23 +172,37 @@ def simulate_light(
 
 
 def check_when_back(
-        orbit: np.array, dt: float = 3600
-    ) -> None:
+        distances: np.array,
+        times: np.array,
+        dt: float = 3600
+    ) -> float:
     """
     Checks when a body is back to its starting position
 
-    :param orbit: trajectory
+    :param distances: distances between light and heavy body
+    :param times: time array
+    :param dt: step size
+    :return: time when the body is back at starting position
     """
-    diff = np.zeros(len(orbit))
-    for idx in range(1, len(orbit)):
-        diff[idx] = np.linalg.norm(orbit[idx] - orbit[0])
-    
-    idx_min = (np.argmin(diff[10:]) + 10)
-    time_back = (idx_min * dt) / (3600 * 24)
-    return time_back
+    indices = []            # fina maximal distances, assuming two points
+                            # don't have the exact same distance (unlikely)
+    for idx in range(1, len(distances) - 1):
+        if distances[idx] > distances[idx - 1] and \
+            distances[idx] > distances[idx + 1]:
+            indices.append(idx)
+
+    if len(indices) < 2:    # if there are not enough maxima, return 0
+        print('Not enough maxima found to determine period')
+        return 0
+                            # return the period in days
+    return (times[indices[1]] - times[indices[0]])
 
 
-# def calculate_circular_velocity(G: float, M2: float, R: float) -> float:
+# def calculate_circular_velocity(
+#         G: float,
+#         M2: float,
+#         R: float
+#     ) -> float:
 #     """ Calculates the circular velocity of a body in orbit
 #     around another body to stay in a circular orbit
 
@@ -200,21 +214,73 @@ def check_when_back(
 #     return np.sqrt(G * M2 / R)
 
 
-def calculate_and_plot_all(constants: Dict[str, float]) -> None:
+def Kepler_period(
+        d_c: Dict[str, float]
+    ) -> float:
+    """ Calculates the period of a body in orbit around another
+    body using Kepler's third law
+
+    :param d_c: dictionary with constants
+    :return: period
+    """
+    G, M1, M2, R = d_c['G'], d_c['M1'], d_c['M2'], d_c['R']
+    return 2 * np.pi * np.sqrt(R**3 / (G * (M1 + M2))) 
+
+
+def simulate_and_get_period(
+        dt: int,
+        constants: Dict[str, float],
+        total_years: int = 3
+    ) -> float:
+    """ Helper function to get the period for multiple dt sizes
+
+    :param dt: step size
+    :param constants: contains the constants
+    :return: period
+    """
+    rx0, ry0 = constants['R'], 0
+    vx0, vy0 = 0, constants['v']
+    n = int(365.25 * 24) * total_years
+
+    r_light, _ = simulate_light(rx0, ry0, vx0, vy0, dt, n, constants)
+    r_heavy, _ = simulate_heavy(r_light, _, constants)
+    distances = np.linalg.norm(r_light - r_heavy, axis = 1)
+    times = np.arange(n) * dt / (3600 * 24)
+    return check_when_back(distances, times)
+
+
+def calculate_and_plot_all(
+        constants: Dict[str, float],
+        dt: int, total_years: int
+    ) -> None:
     """ Helper function to easily do everything
     for different sets of bodies
     
     :param constants: contains the constants
+    :param dt: step size
+    :param total_years: total years to simulate
+    :return: Tuple with multiple arrays and/or labels for combined plotting
     """
     rx0, ry0 = constants['R'], 0
     vx0, vy0 = 0, constants['v']
-    dt = 3600
-    total_years = 5
     n = int(365.25 * 24) * total_years
 
     r_light, v_light = simulate_light(rx0, ry0, vx0, vy0, dt, n, constants)
     r_heavy, v_heavy = simulate_heavy(r_light, v_light, constants)
-    print(f'Back at starting position at {check_when_back(r_light):.2f} days')
+
+    distances = np.linalg.norm(r_light - r_heavy, axis = 1)
+    times = np.arange(n) * dt / (3600 * 24) # in days
+
+    period = check_when_back(distances, times)
+    print(f'Back at starting position at {period:.2f} days')
+
+    # Commented-out and moved to main() for combined plotting
+    # plt.figure(figsize = (6, 6))
+    # plt.plot(times, distances, color = '#ED8A3F', linewidth = 2)
+    # plt.xlabel('tijd (dagen)')
+    # plt.ylabel('afstand (m)')
+    # plt.grid()
+    # plt.show()
 
     initial_energy = calculate_energy(r_light[0, 0], r_light[0, 1],
                                       v_light[0, 0], v_light[0, 1],
@@ -237,14 +303,20 @@ def calculate_and_plot_all(constants: Dict[str, float]) -> None:
     print(f'Initial energy: {initial_energy}')
     print(f'Final energy: {final_energy}')
     print(f'Relative variation: {relative_variation}')
+    print('\t-----')
+    print(f'Obtained period: {period:.2f} days')
+    print(f'Theoretical period: {Kepler_period(constants) / (3600 * 24):.2f} days')
+    print()
     print()
 
+    # Uncomment to show the approximate energy conservation for each pair
     plt.figure(figsize = (6, 6))
     plt.plot(energies, color = '#ED8A3F', linewidth = 2)
     plt.xlabel('tijd')
     plt.ylabel('energie')
     plt.show()
 
+    # Uncomment to show the orbits of the two bodies
     plt.figure(figsize = (6, 6))
     plt.plot(r_light[:, 0], r_light[:, 1], color = 'black', linewidth = 2,
              label = f'Baan van de {constants["name_1"]}')
@@ -257,20 +329,10 @@ def calculate_and_plot_all(constants: Dict[str, float]) -> None:
     plt.grid()
     plt.show()
 
+    return distances, times, f'{constants["name_1"]} - {constants["name_2"]}'
+
 
 def main():
-    #! TODO's:
-    # - maak plotjes voor langere tijdsperiodes met de periode:
-    #    dus plot de tijd versus de afstand van de aarde tot de zon,
-    #    en voeg evt ook de afstand van de maan tot de aarde toe en de afstand van Mercurius tot de zon
-    # - maak een plotje met tijdsstap versus periode: wordt deze dan accurater?
-    #   -> mogelijk antwoord: ja, want de afwijking wordt kleiner, en met het plotje
-    #      kunnen we wellicht 0-1 plotten waar 1 de ideale waarde is, en dan voor elke combinatie
-    #      van tijdsstap en periode zien we ze dichter bij 1 komen
-    # - zoek een verklaring op voor waarom de afwijking bij de aarde het grootste is
-    #    -> mogelijk antwoord: probeer andere beginwaarden, zoals die van minor axis
-    # - zie de reader voor wat er in de report moet komen
-
     earth_sun_constants = {
         'G': 6.67430e-11,   # gravitational constant 
         'M1': 5.972e24,     # mass of the Earth
@@ -280,10 +342,6 @@ def main():
         'name_1': 'Aarde',   
         'name_2': 'Zon',
     }
-    # dt = 3600
-    # n = int(365.25 * 24) * 5
-    calculate_and_plot_all(earth_sun_constants)#, dt, n)
-
     moon_earth_constants = {
         'G': 6.67430e-11,   # gravitational constant
         'M1': 0.07346e24,   # mass of the Moon 
@@ -293,8 +351,6 @@ def main():
         'name_1': 'Maan',   
         'name_2': 'Aarde',  
     }
-    calculate_and_plot_all(moon_earth_constants)
-
     mercury_sun_constants = {
         'G': 6.67430e-11,   # gravitational constant
         'M1': 0.33010e24,   # mass of the Mercury
@@ -304,8 +360,70 @@ def main():
         'name_1': 'Mercurius',   
         'name_2': 'Zon',  
     }
-    calculate_and_plot_all(mercury_sun_constants)
 
+    # Approximated periods:
+    # - Sun-Earth: 347.75 days
+    # - Earth-Moon: 25.13 days
+    # - Sun-Mercury: 56.62 days
+    
+    dt = 3600
+    ty = 2                  # total years
+
+                            # catch the distances, times, and
+                            # labels for combined plotting
+    d1, t1, l1 = calculate_and_plot_all(earth_sun_constants, dt, ty)
+    d2, t2, l2 = calculate_and_plot_all(moon_earth_constants, dt, ty)
+    d3, t3, l3 = calculate_and_plot_all(mercury_sun_constants, dt, ty)  
+
+    plt.figure(figsize = (6, 6))
+    plt.plot(t2, (d2 - np.mean(d2)) / np.std(d2), color = '#FF0000', linewidth = 1.5, label = l2 + ' (z-score)')
+    plt.plot(t3, (d3 - np.mean(d3)) / np.std(d3), color = '#00FF00', linewidth = 1.5, label = l3 + ' (z-score)')
+    plt.plot(t1, (d1 - np.mean(d1)) / np.std(d1), color = '#0000FF', linewidth = 1.5, label = l1 + ' (z-score)')
+    # add vertical lines where one period of 347.75 days is reached
+    for idx in range(1, ty + 1):
+        plt.axvline(x = 347.75 * idx, color = '#0000FF', linestyle = '--', linewidth = 1.5)
+    plt.plot([], [], color = '#0000FF', linestyle = '--', linewidth = 1.5, label = 'Volledige omwenteling Aarde-Zon')
+
+    plt.xlabel('tijd (dagen)', fontsize = 14)
+    plt.ylabel('afstand (m), gestandaardiseerd', fontsize = 14)
+    plt.legend(fontsize = 14, facecolor = '#F0F0F0')
+    plt.grid(True, which = 'both', alpha = 0.8)
+    plt.tight_layout()
+    plt.show()
+
+    # now, we want to plot the period versus different starting speeds of
+    # the Mercury-Sun system
+    theo_period = Kepler_period(mercury_sun_constants) / (3600 * 24)
+    print(f'Theoretical period for Mercury-Sun: {theo_period:.2f} days')
+    speeds = np.linspace(38.86e3, 38.86e3 + 10e3, 50)
+    periods = []
+    for speed in speeds:
+        mercury_sun_constants['v'] = speed
+        periods.append(simulate_and_get_period(dt, mercury_sun_constants, ty))
+        print(f'Period for speed = {speed:.2f}: {periods[-1]:.2f} days')
+
+    plt.figure(figsize = (6, 6))
+    plt.plot(speeds, periods, color = '#BB0029', linewidth = 2,
+             label = 'Gesimuleerde periode')
+    plt.axhline(y = theo_period, color = '#000000', linestyle = '--', linewidth = 1.5,
+                label = '3e wet van Kepler')
+    plt.xlabel('beginsnelheid (m/s)', fontsize = 14)
+    plt.ylabel('periode (dagen)', fontsize = 14)
+    plt.grid(True, which = 'both', alpha = 0.8)
+    plt.legend(fontsize = 14, facecolor = '#F0F0F0')
+    plt.tight_layout()
+    plt.show()
+
+
+    # lastly, uncomment the following code to see the time period does not make
+    # the biggest difference in the accuracy of the simulation, apart from 
+    # instability kicking in at a certain point
+    # ty = 10
+    # dt_sizes = [7200, 3600, 1800, 900, 800, 700, 600, 500]
+    # periods = []
+    # for dt in dt_sizes:
+    #     periods.append(simulate_and_get_period(dt, earth_sun_constants, ty))
+    #     print(f'Period for dt = {dt}: {periods[-1]:.2f} days')
 
 
 if __name__ == '__main__':
