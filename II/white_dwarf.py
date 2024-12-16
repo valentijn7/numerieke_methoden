@@ -271,16 +271,19 @@ def main():
         # first calculate the radius and rho by applying the conversion iteratively
         radii = [ksi_to_radius(ksi_val) for ksi_val in ksi]
         rhos = [x_to_rho(x_val) for x_val in x]
+        power = int(idx[0])
         plt.plot(radii,
                  rhos,
                  color = col,
-                 label = f'rho_c = 10^{int(idx[0])}')
+                 # combine $$ r' with f' to combine them in the legend
+                 label = f'$\\rho_{{start}} = 10^{{{power}}}$')
+                #  label = f'rho_c = $10^{int(idx[0])$}')
     plt.xlabel('radius [km]', fontsize = 14)
     plt.ylabel('log(density [km/m^3])', fontsize = 14)
     plt.xticks(fontsize = 14)
     plt.yticks(fontsize = 14)
     plt.yscale('log')
-    plt.legend()
+    plt.legend(fontsize = 14, facecolor = '#F0F0F0', loc = 'upper right')
     plt.grid()
     plt.tight_layout()
     plt.show() 
