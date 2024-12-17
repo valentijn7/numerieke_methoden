@@ -77,8 +77,9 @@ def derivative(
     sigma = 5.67e-8         # Stefan-Boltzmann coefficient
 
     T, S = state
-                            # compute dT/dx and dS/dx
-    dTdx = S / (1 - x**2)
+                            # compute dT/dx and dS/dx (while
+                            # avoiding division by zero)
+    dTdx = S / max((1 - x**2), 1e-10)
     dSdx = (epsilon * sigma * T**4 - Q(x, Q0) * (1 - alpha(T))) / D
 
     return np.array([dTdx, dSdx])
@@ -116,71 +117,71 @@ def integrate(
     return x_values, T_values, S_values
 
 
-def f(
-        x: float,
-        roots: List[float]
-    ) -> float:
-    """ Returns f(x)
+# def f(
+#         x: float,
+#         roots: List[float]
+#     ) -> float:
+#     """ Returns f(x)
 
-    :param x: evaluate f at x
-    :param roots: roots (with only x = 1 for S(1))
-    :return: f(x)
-    """
-    return np.prod([x - root for root in roots])
+#     :param x: evaluate f at x
+#     :param roots: roots (with only x = 1 for S(1))
+#     :return: f(x)
+#     """
+#     return np.prod([x - root for root in roots])
 
 
-def df(
-        x: float,
-        roots: List[float],
-        dx: float = 1e-6
-    ) -> float:
-    """ Returns df/dx where f is a polynomial defined as
+# def df(
+#         x: float,
+#         roots: List[float],
+#         dx: float = 1e-6
+#     ) -> float:
+#     """ Returns df/dx where f is a polynomial defined as
     
-    f(x) = (r1 - x) * (r2 - x) * ... * (rn - x)
+#     f(x) = (r1 - x) * (r2 - x) * ... * (rn - x)
 
-    where r1, r2, ..., rn are the roots of the polynomial.
-    To obtain f'(x), we use the 'symmetric three-point formula'
+#     where r1, r2, ..., rn are the roots of the polynomial.
+#     To obtain f'(x), we use the 'symmetric three-point formula'
 
-    :param x: point of evaluation
-    :param roots: roots (with only x = 1 for S(1))
-    :param dx: step size
-    :return: df/dx
-    """
-    return (f(x + dx, roots) - f(x - dx, roots)) / (2 * dx)
+#     :param x: point of evaluation
+#     :param roots: roots (with only x = 1 for S(1))
+#     :param dx: step size
+#     :return: df/dx
+#     """
+#     return (f(x + dx, roots) - f(x - dx, roots)) / (2 * dx)
 
 
-def newton_raphson(
-        roots: List[float],
-        x0: float,
-        maxiter: int = 1000,
-        dec: float = 6
-    ) -> Tuple[float, float, int]:
-    """
-    Determines the root of the equation f(x) = 0 within [a, b]
-    using the Newton-Raphson method
+# def newton_raphson(
+#         roots: List[float],
+#         x0: float,
+#         maxiter: int = 1000,
+#         dec: float = 6
+#     ) -> Tuple[float, float, int]:
+#     """
+#     Determines the root of the equation f(x) = 0 within [a, b]
+#     using the Newton-Raphson method
 
-    :param roots: list of polynomial roots
-    :param x0: double with the initial guess
-    :param maxiter: maximum iterations (to prevent infinite loops)
-    :param dec: number of decimals to round the result to
-    :return: a tuple (Root, Error, Number of Iterations)
-    """
-    n = 0
-    tolerance = 1.0e-6
-    while n < maxiter:
-        fx = f(x0, roots)       # calculate f(x0)
-        dfx = df(x0, roots)     # calculate f'(x0)
+#     :param roots: list of polynomial roots
+#     :param x0: double with the initial guess
+#     :param maxiter: maximum iterations (to prevent infinite loops)
+#     :param dec: number of decimals to round the result to
+#     :return: a tuple (Root, Error, Number of Iterations)
+#     """
+#     n = 0
+#     tolerance = 1.0e-6
+#     while n < maxiter:
+#         fx = f(x0, roots)       # calculate f(x0)
+#         dfx = df(x0, roots)     # calculate f'(x0)
         
-        x1 = x0 - fx / dfx 
-                                # if within the error tolerance, return result
-        if abs(x1 - x0) < tolerance:
-            return x1, abs(x1 - x0), n, dec
+#         x1 = x0 - fx / dfx 
+#                                 # if within the error tolerance, return result
+#         if abs(x1 - x0) < tolerance:
+#             return x1, abs(x1 - x0), n, dec
         
-        if n + 1 != maxiter:    # if not at the last iteration, update x0
-            x0 = x1              
-        n += 1
-                                # if the loop exits, the method did not converge
-    return x1, abs(x1 - x0), n
+#         if n + 1 != maxiter:    # if not at the last iteration, update x0
+#             x0 = x1              
+#         n += 1
+#                                 # if the loop exits, the method did not converge
+#     return x1, abs(x1 - x0), n
 
 
 def shoot_T0_for_S1(
@@ -197,8 +198,49 @@ def shoot_T0_for_S1(
     return S_values[-1]
 
 
+def newton_shoot(
+        T0: float,
+        Q0: float,
+        dT: float = 0.1,
+        maxiter: int = 1000,
+        tolerance: float = 1e-6
+    ) -> float:
+    """ Uses Newton-Raphson to find T0 such that S(1) = 0
+
+    :param T0: initial temp in K
+    :param Q0: planetary average incoming solar radiation
+    :param maxiter: maximum number of iterations
+    :param tolerance: error tolerance
+    :return: T0
+    """
+    for idx in range(maxiter):
+                            # get a first candidate for S(1)
+                            # and see if it's close enough to 0
+        S1_candidate = shoot_T0_for_S1(T0, Q0)
+        if np.abs(S1_candidate) < tolerance:
+            return T0
+                            # if not, update T0 with the derivative
+                            # as calculated by the symmetric three-point formula
+        dS1dT = (shoot_T0_for_S1(T0 + dT, Q0) - \
+                 shoot_T0_for_S1(T0 - dT, Q0)) \
+                 / 2 * dT
+
+        if dS1dT == 0:      # avoid division by zero
+            print("Warning: division by zero in newton_shoot()")
+            break
+                            # see if the Newton-Raphson method converges
+        T0_next = T0 - S1_candidate / dS1dT
+        if np.abs(T0_next - T0) < tolerance:
+            return T0_next
+        T0 = T0_next        # continue with the next iteration
+
+    print("Warning: newton_shoot() did not converge")
+    return T0
+
+
+
 def main():
-    T0 = 200
+    T0 = 280
     Q0 = 300
     x_values, T_values, S_values = integrate(T0, Q0)
 
@@ -230,6 +272,12 @@ def main():
     plt.legend()
     plt.grid(True, which = 'both', alpha = 0.8)
     plt.show()
+
+
+    T0 = newton_shoot(280, 300)
+    print(f'Found T0 of {T0:.3f}')
+    print(f'Verify: S(1) = {shoot_T0_for_S1(T0, Q0):.3f}')
+
 
 if __name__ == '__main__':
     main()
