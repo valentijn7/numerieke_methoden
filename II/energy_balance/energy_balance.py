@@ -60,6 +60,20 @@ def Q(
     return Q0 * (1 - 0.241 * (3 * x**2 - 1))
 
 
+def planetary_avg_T(
+        x_values: np.array,
+        T_values: np.array
+    ) -> float:
+    """ Returns the planetary average temperature
+
+    :param x_values: x-values
+    :param T_values: T-values
+    :return: planetary average temperature
+    """
+    weights = 1 - x_values**2
+    return np.sum(weights * T_values) / np.sum(weights)
+
+
 def derivative(
         state: np.array,
         x: float,
@@ -77,6 +91,9 @@ def derivative(
     sigma = 5.67e-8         # Stefan-Boltzmann coefficient
 
     T, S = state
+
+    if T > 1000:            #! TODO vragen of dit prima is om wegshooten te voorkomen
+        T = 1000
                             # compute dT/dx and dS/dx (while
                             # avoiding division by zero)
     dTdx = S / max((1 - x**2), 1e-10)
@@ -111,6 +128,11 @@ def integrate(
                             # integrate for n steps and save state
     for idx in range(n):
         state = RK4(state, x_values[idx], dx, derivative, Q0)
+                            # cap the temperature at 1000K to avoid unrealistic values
+                            #! TODO vragen of dit prima is om wegshooten te voorkomen
+        if state[0] > 1000:
+            state[0] = 1000
+                            # save the values
         T_values[idx + 1] = state[0]
         S_values[idx + 1] = state[1]
                             # return all
@@ -201,7 +223,7 @@ def shoot_T0_for_S1(
 def newton_shoot(
         T0: float,
         Q0: float,
-        dT: float = 0.1,
+        dT: float = 1,
         maxiter: int = 1000,
         tolerance: float = 1e-6
     ) -> float:
@@ -213,7 +235,7 @@ def newton_shoot(
     :param tolerance: error tolerance
     :return: T0
     """
-    for idx in range(maxiter):
+    for _ in range(maxiter):
                             # get a first candidate for S(1)
                             # and see if it's close enough to 0
         S1_candidate = shoot_T0_for_S1(T0, Q0)
@@ -225,9 +247,16 @@ def newton_shoot(
                  shoot_T0_for_S1(T0 - dT, Q0)) \
                  / 2 * dT
 
-        if dS1dT == 0:      # avoid division by zero
-            print("Warning: division by zero in newton_shoot()")
+        # if dS1dT == 0:      # avoid division by zero
+        #     print("Warning: division by zero in newton_shoot()")
+        #     break
+
+        if np.abs(dS1dT) < 1e-4:
+            print("Warning: derivative too small in newton_shoot()")
             break
+        
+        print(f"Iteration {_}: T0 = {T0:.3f}, S1 = {S1_candidate:.3f}, dS1/dT = {dS1dT:.3e}")
+
                             # see if the Newton-Raphson method converges
         T0_next = T0 - S1_candidate / dS1dT
         if np.abs(T0_next - T0) < tolerance:
@@ -253,7 +282,7 @@ def main():
     plt.plot(x_values, S_values, label = 'S')
     plt.xlabel('x')
     plt.ylabel('T, S')
-    plt.legend()
+    # plt.legend()
     plt.grid(True, which = 'both', alpha = 0.8)
     plt.show()
 
@@ -269,14 +298,34 @@ def main():
     plt.xlabel('T0')
     plt.ylabel('S1')
     plt.yscale('log')
-    plt.legend()
+    # plt.legend()
     plt.grid(True, which = 'both', alpha = 0.8)
     plt.show()
 
 
-    T0 = newton_shoot(280, 300)
+    T0 = newton_shoot(270, 300)
     print(f'Found T0 of {T0:.3f}')
     print(f'Verify: S(1) = {shoot_T0_for_S1(T0, Q0):.3f}')
+
+
+    Q0_values = np.linspace(200, 500, 100)
+    Tav_values = np.zeros(len(Q0_values))
+    T_profiles = np.zeros(len(Q0_values))
+  
+    for Q0 in Q0_values:
+        T0 = newton_shoot(270, Q0)
+        x_values, T_values, _= integrate(T0, Q0)
+        Tav_values[idx] = planetary_avg_T(x_values, T_values)
+        T_profiles[idx] = T_values[-1]
+
+    plt.figure(figsize = (6, 6))
+    plt.plot(Q0_values, Tav_values, label = 'Tav')
+    plt.plot(Q0_values, T_profiles, label = 'T(1)')
+    plt.xlabel('Q0')
+    plt.ylabel('T')
+    plt.legend()
+    plt.grid(True, which = 'both', alpha = 0.8)
+    plt.show()
 
 
 if __name__ == '__main__':
