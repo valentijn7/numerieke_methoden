@@ -299,10 +299,12 @@ def calculate_and_plot_all(
                                        r_heavy[idx, 0], r_heavy[idx, 1],
                                        v_heavy[idx, 0], v_heavy[idx, 1],
                                        constants)
-    relative_variation = np.abs((final_energy - initial_energy) / initial_energy)
+    relative_change = np.abs((final_energy - initial_energy) / initial_energy) * 100
     print(f'Initial energy: {initial_energy}')
+    print(f'10^-8 of initial energy: {initial_energy * 10**-8}')
     print(f'Final energy: {final_energy}')
-    print(f'Relative variation: {relative_variation}')
+    print(f'Relative change: {relative_change}%')
+    ### Print the percentage 
     print('\t-----')
     print(f'Obtained period: {period:.2f} days')
     print(f'Theoretical period: {Kepler_period(constants) / (3600 * 24):.2f} days')
@@ -333,6 +335,9 @@ def calculate_and_plot_all(
 
 
 def main():
+    ### CHANGE INITIAL CONDITIONS HERE!
+    # Source: https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+
     earth_sun_constants = {
         'G': 6.67430e-11,   # gravitational constant 
         'M1': 5.972e24,     # mass of the Earth
@@ -360,24 +365,37 @@ def main():
         'name_1': 'Mercurius',   
         'name_2': 'Zon',  
     }
+    mercury_sun_constants_high_velocity = {
+        'G': 6.67430e-11,   # gravitational constant
+        'M1': 0.33010e24,   # mass of the Mercury
+        'M2': 1.989e30,     # mass of the Sun
+        'R' : 57.909e9,     # semi-major axis of Mercury
+        'v' : 47.9e3,       # velocity of Mercury now 47.9e3 to see get a more
+                            # circular orbit
+        'name_1': 'Mercurius',   
+        'name_2': 'Zon',  
+    }
 
-    # Approximated periods:
-    # - Sun-Earth: 347.75 days
-    # - Earth-Moon: 25.13 days
-    # - Sun-Mercury: 56.62 days
-    
     dt = 3600
     ty = 2                  # total years
+
+                            # Approximated periods:
+                            # - Sun-Earth: 347.75 days
+                            # - Earth-Moon: 25.13 days
+                            # - Sun-Mercury: 56.62 days
 
                             # catch the distances, times, and
                             # labels for combined plotting
     d1, t1, l1 = calculate_and_plot_all(earth_sun_constants, dt, ty)
     d2, t2, l2 = calculate_and_plot_all(moon_earth_constants, dt, ty)
-    d3, t3, l3 = calculate_and_plot_all(mercury_sun_constants, dt, ty)  
+    d3, t3, l3 = calculate_and_plot_all(mercury_sun_constants, dt, ty) 
+    d3_2, t3_2, l3_2 = calculate_and_plot_all(mercury_sun_constants_high_velocity, dt, ty) 
 
     plt.figure(figsize = (6, 6))
     plt.plot(t2, (d2 - np.mean(d2)) / np.std(d2), color = '#FF0000', linewidth = 1.5, label = l2 + ' (z-score)')
     plt.plot(t3, (d3 - np.mean(d3)) / np.std(d3), color = '#00FF00', linewidth = 1.5, label = l3 + ' (z-score)')
+    plt.plot(t3_2, (d3_2 - np.mean(d3_2)) / np.std(d3_2), '#4C3575', linewidth = 1.5,
+             label = l3_2 + ' ($v_{{start}} = 48.9e3$) (z-score)')
     plt.plot(t1, (d1 - np.mean(d1)) / np.std(d1), color = '#0000FF', linewidth = 1.5, label = l1 + ' (z-score)')
     # add vertical lines where one period of 347.75 days is reached
     for idx in range(1, ty + 1):
