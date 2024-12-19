@@ -35,6 +35,53 @@ def RK4(
     return current_state + (k1 + 2 * k2 + 2 * k3 + k4) / 6
 
 
+def forward_euler(
+        current_state: np.array,
+        current_time: float,
+        step_size: float,
+        derivative: callable,
+        d_c: Dict[str, float]
+    ) -> np.array:
+    """ Performs one step of the Forward Euler method
+    
+    :param current_state: current state of the system (dependent variable)
+    :param current_time: current time of the system (independent variable)
+    :param step_size: step size of the integration
+    :param derivative: function that returns derivatives for current state and time
+    :param d_c: dictionary with constants
+    :return: updated values of dependent variable at next time step
+    """
+    slope = derivative(current_state, current_time, d_c)
+    return current_state + step_size * slope
+
+
+def velocity_verlet(
+        current_state: np.array,
+        current_time: float,
+        step_size: float,
+        derivative: callable,
+        d_c: Dict[str, float]
+    ) -> np.array:
+    """ Performs one step of the Velocity Verlet method
+    
+    :param current_state: current state of the system (dependent variable)
+    :param current_time: current time of the system (independent variable)
+    :param step_size: step size of the integration
+    :param derivative: function that returns derivatives for current state and time
+    :param d_c: dictionary with constants
+    :return: updated values of dependent variable at next time step
+    """                     
+    acceleration = derivative(current_state, current_time, d_c)[2:]
+                            # extract position and state and perform VV-step
+    position = current_state[:2]
+    velocity = current_state[2:]
+    new_position = position + velocity * step_size + 0.5 * acceleration * step_size**2
+    new_acceleration = derivative(np.concatenate((new_position, velocity)),
+                                  current_time + step_size, d_c)[2:]
+    new_velocity = velocity + 0.5 * (acceleration + new_acceleration) * step_size
+    return np.concatenate((new_position, new_velocity))
+
+
 def derivatives(
         state: np.array,
         t: float,
@@ -143,7 +190,8 @@ def simulate_light(
         vy0: float,
         dt: float,
         n: int,
-        d_c: Dict[str, float]
+        d_c: Dict[str, float],
+        method: str = 'RK4'
     ):
     """ Simulates the orbit of a body around another body
     from a starting position (rx0, ry0) and velocity
@@ -156,8 +204,18 @@ def simulate_light(
     :param dt: step size
     :param n: number of steps
     :param d_c: dictionary with constants
+    :param method: which method to use: RK4, FE (forward Euler), VV (velocity Verlet)
     :return: arrays with x and y positions
-    """                     # initialize state and zero-initialized
+    """                     
+    if method == 'RK4':
+        f = RK4
+    elif method == 'FE':
+        f = forward_euler
+    elif method == 'VV':
+        f = velocity_verlet
+    else:
+        raise ValueError('Invalid method')
+                            # initialize state and zero-initialized
                             # array for the positions and velocities
     state = np.array([rx0, ry0, vx0, vy0])
     positions = np.zeros((n, 2))
@@ -166,15 +224,14 @@ def simulate_light(
     for idx in range(n):    # iterate over n and calculate orbit
         positions[idx] = state[:2]
         velocities[idx] = state[2:]
-        state = RK4(state, idx * dt, dt, derivatives, d_c)
+        state = f(state, idx * dt, dt, derivatives, d_c)
 
     return positions, velocities
 
 
 def check_when_back(
         distances: np.array,
-        times: np.array,
-        dt: float = 3600
+        times: np.array
     ) -> float:
     """
     Checks when a body is back to its starting position
@@ -281,6 +338,7 @@ def calculate_and_plot_all(
     # plt.ylabel('afstand (m)')
     # plt.grid()
     # plt.show()
+    #! TODO voeg toe dat final energy de energie is aan het einde van de baan, niet de simulatie
 
     initial_energy = calculate_energy(r_light[0, 0], r_light[0, 1],
                                       v_light[0, 0], v_light[0, 1],
@@ -431,6 +489,75 @@ def main():
     plt.legend(fontsize = 14, facecolor = '#F0F0F0')
     plt.tight_layout()
     plt.show()
+
+    #################################################################
+    # extra task: check for energy conservation for different methods
+    ty = 2
+    dt = 3600
+    constants = earth_sun_constants
+
+    rx0, ry0 = constants['R'], 0
+    vx0, vy0 = 0, constants['v']
+    n = int(365.25 * 24) * ty
+                                # Calculate relative change for RK4
+    r_light, v_light = simulate_light(rx0, ry0, vx0, vy0, dt, n, constants, 'RK4')
+    r_heavy, v_heavy = simulate_heavy(r_light, v_light, constants)
+
+    initial_energy = calculate_energy(r_light[0, 0], r_light[0, 1],
+                                      v_light[0, 0], v_light[0, 1],
+                                      r_heavy[0, 0], r_heavy[0, 1],
+                                      v_heavy[0, 0], v_heavy[0, 1],
+                                      constants)
+    final_energy = calculate_energy(r_light[-1, 0], r_light[-1, 1],
+                                    v_light[-1, 0], v_light[-1, 1],
+                                    r_heavy[-1, 0], r_heavy[-1, 1],
+                                    v_heavy[-1, 0], v_heavy[-1, 1],
+                                    constants)
+    relative_change = np.abs((final_energy - initial_energy) / initial_energy) * 100
+    print(f'Relative change for RK4, dt = 3600: {relative_change}%')
+                                # Calculate relative change for FE
+    r_light, v_light = simulate_light(rx0, ry0, vx0, vy0, dt, n, constants, 'FE')
+    initial_energy = calculate_energy(r_light[0, 0], r_light[0, 1],
+                                      v_light[0, 0], v_light[0, 1],
+                                      r_heavy[0, 0], r_heavy[0, 1],
+                                      v_heavy[0, 0], v_heavy[0, 1],
+                                      constants)
+    final_energy = calculate_energy(r_light[-1, 0], r_light[-1, 1],
+                                    v_light[-1, 0], v_light[-1, 1],
+                                    r_heavy[-1, 0], r_heavy[-1, 1],
+                                    v_heavy[-1, 0], v_heavy[-1, 1],
+                                    constants)
+    relative_change = np.abs((final_energy - initial_energy) / initial_energy) * 100
+    print(f'Relative change for FE, dt = 3600: {relative_change}%')
+                                # Calculate relative change for VV
+    r_light, v_light = simulate_light(rx0, ry0, vx0, vy0, dt, n, constants, 'VV')
+    initial_energy = calculate_energy(r_light[0, 0], r_light[0, 1],
+                                      v_light[0, 0], v_light[0, 1],
+                                      r_heavy[0, 0], r_heavy[0, 1],
+                                      v_heavy[0, 0], v_heavy[0, 1],
+                                      constants)
+    final_energy = calculate_energy(r_light[-1, 0], r_light[-1, 1],
+                                    v_light[-1, 0], v_light[-1, 1],
+                                    r_heavy[-1, 0], r_heavy[-1, 1],
+                                    v_heavy[-1, 0], v_heavy[-1, 1],
+                                    constants)
+    relative_change = np.abs((final_energy - initial_energy) / initial_energy) * 100
+    print(f'Relative change for VV, dt = 3600: {relative_change}%')
+                                # Calculate relative change for VV with dt = 900
+    dt = 900
+    r_light, v_light = simulate_light(rx0, ry0, vx0, vy0, dt, n, constants, 'VV')
+    initial_energy = calculate_energy(r_light[0, 0], r_light[0, 1],
+                                      v_light[0, 0], v_light[0, 1],
+                                      r_heavy[0, 0], r_heavy[0, 1],
+                                      v_heavy[0, 0], v_heavy[0, 1],
+                                      constants)
+    final_energy = calculate_energy(r_light[-1, 0], r_light[-1, 1],
+                                    v_light[-1, 0], v_light[-1, 1],
+                                    r_heavy[-1, 0], r_heavy[-1, 1],
+                                    v_heavy[-1, 0], v_heavy[-1, 1],
+                                    constants)
+    relative_change = np.abs((final_energy - initial_energy) / initial_energy) * 100
+    print(f'Relative change for VV, dt = 900: {relative_change}%')
 
 
     # lastly, uncomment the following code to see the time period does not make
