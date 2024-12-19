@@ -61,17 +61,14 @@ def Q(
 
 
 def planetary_avg_T(
-        x_values: np.array,
         T_values: np.array
     ) -> float:
     """ Returns the planetary average temperature
 
-    :param x_values: x-values
     :param T_values: T-values
     :return: planetary average temperature
     """
-    weights = 1 - x_values**2
-    return np.sum(weights * T_values) / np.sum(weights)
+    return np.average(T_values)
 
 
 def derivative(
@@ -92,13 +89,15 @@ def derivative(
 
     T, S = state
 
-    if T > 1000:            #! TODO vragen of dit prima is om wegshooten te voorkomen
-        T = 1000
+    # if T > 1000:            #! TODO vragen of dit prima is om wegshooten te voorkomen
+    #     print("large T")
+    #     T = 1000
                             # compute dT/dx and dS/dx (while
                             # avoiding division by zero)
-    dTdx = S / max((1 - x**2), 1e-10)
+    # dTdx = S / max((1 - x**2), 1e-2)
+    dTdx = S / ((1 - x**2) + 1e-1)
     dSdx = (epsilon * sigma * T**4 - Q(x, Q0) * (1 - alpha(T))) / D
-
+    # print(T**4)
     return np.array([dTdx, dSdx])
 
 
@@ -129,81 +128,16 @@ def integrate(
     for idx in range(n):
         state = RK4(state, x_values[idx], dx, derivative, Q0)
                             # cap the temperature at 1000K to avoid unrealistic values
-                            #! TODO vragen of dit prima is om wegshooten te voorkomen
-        if state[0] > 1000:
-            state[0] = 1000
+        #                     #! TODO vragen of dit prima is om wegshooten te voorkomen
+        # if state[0] > 1000:
+        #     print('large T')
+        #     state[0] = 1000
+        # print(state[0], state[1])
                             # save the values
         T_values[idx + 1] = state[0]
         S_values[idx + 1] = state[1]
                             # return all
     return x_values, T_values, S_values
-
-
-# def f(
-#         x: float,
-#         roots: List[float]
-#     ) -> float:
-#     """ Returns f(x)
-
-#     :param x: evaluate f at x
-#     :param roots: roots (with only x = 1 for S(1))
-#     :return: f(x)
-#     """
-#     return np.prod([x - root for root in roots])
-
-
-# def df(
-#         x: float,
-#         roots: List[float],
-#         dx: float = 1e-6
-#     ) -> float:
-#     """ Returns df/dx where f is a polynomial defined as
-    
-#     f(x) = (r1 - x) * (r2 - x) * ... * (rn - x)
-
-#     where r1, r2, ..., rn are the roots of the polynomial.
-#     To obtain f'(x), we use the 'symmetric three-point formula'
-
-#     :param x: point of evaluation
-#     :param roots: roots (with only x = 1 for S(1))
-#     :param dx: step size
-#     :return: df/dx
-#     """
-#     return (f(x + dx, roots) - f(x - dx, roots)) / (2 * dx)
-
-
-# def newton_raphson(
-#         roots: List[float],
-#         x0: float,
-#         maxiter: int = 1000,
-#         dec: float = 6
-#     ) -> Tuple[float, float, int]:
-#     """
-#     Determines the root of the equation f(x) = 0 within [a, b]
-#     using the Newton-Raphson method
-
-#     :param roots: list of polynomial roots
-#     :param x0: double with the initial guess
-#     :param maxiter: maximum iterations (to prevent infinite loops)
-#     :param dec: number of decimals to round the result to
-#     :return: a tuple (Root, Error, Number of Iterations)
-#     """
-#     n = 0
-#     tolerance = 1.0e-6
-#     while n < maxiter:
-#         fx = f(x0, roots)       # calculate f(x0)
-#         dfx = df(x0, roots)     # calculate f'(x0)
-        
-#         x1 = x0 - fx / dfx 
-#                                 # if within the error tolerance, return result
-#         if abs(x1 - x0) < tolerance:
-#             return x1, abs(x1 - x0), n, dec
-        
-#         if n + 1 != maxiter:    # if not at the last iteration, update x0
-#             x0 = x1              
-#         n += 1
-#                                 # if the loop exits, the method did not converge
-#     return x1, abs(x1 - x0), n
 
 
 def shoot_T0_for_S1(
@@ -223,8 +157,8 @@ def shoot_T0_for_S1(
 def newton_shoot(
         T0: float,
         Q0: float,
-        dT: float = 1,
-        maxiter: int = 1000,
+        dT: float = 1e-2,
+        maxiter: int = 100,
         tolerance: float = 1e-6
     ) -> float:
     """ Uses Newton-Raphson to find T0 such that S(1) = 0
@@ -243,19 +177,27 @@ def newton_shoot(
             return T0
                             # if not, update T0 with the derivative
                             # as calculated by the symmetric three-point formula
+        # print(1, shoot_T0_for_S1(T0 + dT, Q0))
+        # print(2, shoot_T0_for_S1(T0 - dT, Q0))
+        
         dS1dT = (shoot_T0_for_S1(T0 + dT, Q0) - \
                  shoot_T0_for_S1(T0 - dT, Q0)) \
-                 / 2 * dT
+                 / (2 * dT)
 
         # if dS1dT == 0:      # avoid division by zero
         #     print("Warning: division by zero in newton_shoot()")
         #     break
 
-        if np.abs(dS1dT) < 1e-4:
+        if np.abs(dS1dT) < 1e-2:
+
             print("Warning: derivative too small in newton_shoot()")
             break
         
         print(f"Iteration {_}: T0 = {T0:.3f}, S1 = {S1_candidate:.3f}, dS1/dT = {dS1dT:.3e}")
+        
+        if np.isnan(S1_candidate) or np.isnan(dS1dT):
+            print("Warning: newton_shoot() found a nan")
+            break
 
                             # see if the Newton-Raphson method converges
         T0_next = T0 - S1_candidate / dS1dT
@@ -269,58 +211,111 @@ def newton_shoot(
 
 
 def main():
-    T0 = 280
-    Q0 = 300
-    x_values, T_values, S_values = integrate(T0, Q0)
-
-    print(f'Found S(1) of {S_values[-1]:.3f}')
-    print(f'Found T(1) of {T_values[-1]:.3f}')
+    T0_1 = 215
+    T0_2 = 225
+    T0_3 = 235
+    Q0_1 = 300
+    Q0_2 = 350
+    Q0_3 = 400
+    x_values_1, T_values_1, S_values_1 = integrate(T0_1, Q0_1)
+    T_avg_1 = planetary_avg_T(T_values_1)
+    x_values_2, T_values_2, S_values_2 = integrate(T0_2, Q0_2)
+    T_avg_2 = planetary_avg_T(T_values_2)
+    x_values_3, T_values_3, S_values_3 = integrate(T0_3, Q0_3)
+    T_avg_3 = planetary_avg_T(T_values_3)
 
                             # plot the results
+                            #! TODO zet de T waardes er ook in in label
     plt.figure(figsize = (6, 6))
-    plt.plot(x_values, T_values, label = 'T')
-    plt.plot(x_values, S_values, label = 'S')
-    plt.xlabel('x')
-    plt.ylabel('T, S')
-    # plt.legend()
+    plt.plot(x_values_1, T_values_1, label = r'$\mathrm{T}, \mathrm{T} =, \mathrm{Q}_0 = 300$',
+             color = '#FF0000')
+    plt.axhline(T_avg_1, color = '#FF0000', linestyle = 'dashed',
+                label = r'$\mathrm{T}_{\mathrm{avg}}, \mathrm{Q}_0 = 300$')
+    plt.plot(x_values_2, T_values_2, label = r'$\mathrm{T}, \mathrm{Q}_0 = 350$',
+             color = '#00FF00')
+    plt.axhline(T_avg_2, color = '#00FF00', linestyle = 'dashed',
+                label = r'$\mathrm{T}_{\mathrm{avg}}, \mathrm{Q}_0 = 350$')
+    plt.plot(x_values_3, T_values_3, label = r'$\mathrm{T}, \mathrm{Q}_0 = 400$',
+             color = '#0000FF')
+    plt.axhline(T_avg_3, color = '#0000FF', linestyle = 'dashed',
+                label = r'$\mathrm{T}_{\mathrm{avg}}, \mathrm{Q}_0 = 400$')
+
+
+    plt.xlabel('x (integratievariabele)', fontsize = 14)
+    plt.ylabel('T (Kelvin)', fontsize = 14)
+    plt.legend()
     plt.grid(True, which = 'both', alpha = 0.8)
     plt.show()
 
 
-    T0_values = np.linspace(250, 350, 100)
-    Q0 = 300
-    S1_values = [0] * len(T0_values)
-    for idx in range(len(T0_values)):
-        S1_values[idx] = shoot_T0_for_S1(T0_values[idx], Q0)
+    # T0_values = np.linspace(230, 350, 100)
+    # Q0 = 300
+    # S1_values = [0] * len(T0_values)
+    # for idx in range(len(T0_values)):
+    #     S1_values[idx] = shoot_T0_for_S1(T0_values[idx], Q0)
 
-    plt.figure(figsize = (6, 6))
-    plt.plot(T0_values, S1_values)
-    plt.xlabel('T0')
-    plt.ylabel('S1')
-    plt.yscale('log')
-    # plt.legend()
-    plt.grid(True, which = 'both', alpha = 0.8)
-    plt.show()
+    # plt.figure(figsize = (6, 6))
+    # plt.plot(T0_values, S1_values)
+    # plt.xlabel('T0')
+    # plt.ylabel('S1')
+    # plt.yscale('log')
+    # # plt.legend()
+    # plt.grid(True, which = 'both', alpha = 0.8)
+    # plt.show()
+
+    # T0 = 300
+    # Q0 = 300
+    # T0 = newton_shoot(T0, Q0)
+    # print(f'Found T0 of {T0:.3f}')
+    # print(f'Verify: S(1) = {shoot_T0_for_S1(T0, Q0):.3f}')
 
 
-    T0 = newton_shoot(270, 300)
-    print(f'Found T0 of {T0:.3f}')
-    print(f'Verify: S(1) = {shoot_T0_for_S1(T0, Q0):.3f}')
-
-
-    Q0_values = np.linspace(200, 500, 100)
+    Q0_values = np.linspace(200, 500, 10)
     Tav_values = np.zeros(len(Q0_values))
     T_profiles = np.zeros(len(Q0_values))
   
+    T0 = 230
+    idx = 0
     for Q0 in Q0_values:
-        T0 = newton_shoot(270, Q0)
-        x_values, T_values, _= integrate(T0, Q0)
+        print(f'\nT0: {T0}, Q0: {Q0}')
+        T0 = newton_shoot(T0, Q0)
+        x_values, T_values, _ = integrate(T0, Q0)
         Tav_values[idx] = planetary_avg_T(x_values, T_values)
         T_profiles[idx] = T_values[-1]
+        print(f'Found T_avg of {Tav_values[idx]:.3f} for Q0 = {Q0}')
+        idx += 1
+
+    # plt.figure(figsize = (6, 6))
+    # plt.plot(Q0_values, Tav_values, label = 'Tav')
+    # plt.plot(Q0_values, T_profiles, label = 'T(1)')
+    # plt.xlabel('Q0')
+    # plt.ylabel('T')
+    # plt.legend()
+    # plt.grid(True, which = 'both', alpha = 0.8)
+    # plt.show()
+
+    print('\n\nTake 2\n\n')
+
+    Q0_values_2 = np.linspace(500, 200, 10)
+    Tav_values_2 = np.zeros(len(Q0_values))
+    T_profiles_2 = np.zeros(len(Q0_values))
+  
+    T0 = 400
+    idx = 0
+    for Q0 in Q0_values_2:
+        print(f'\nT0: {T0}, Q0: {Q0}')
+        T0 = newton_shoot(T0, Q0)
+        x_values, T_values, _ = integrate(T0, Q0)
+        Tav_values_2[idx] = planetary_avg_T(T_values)
+        T_profiles_2[idx] = T_values[-1]
+        print(f'Found T_avg of {Tav_values_2[idx]:.3f} for Q0 = {Q0}')
+        idx += 1
 
     plt.figure(figsize = (6, 6))
-    plt.plot(Q0_values, Tav_values, label = 'Tav')
-    plt.plot(Q0_values, T_profiles, label = 'T(1)')
+    plt.plot(Q0_values, Tav_values, label = 'Tav', linewidth = 5)
+    plt.plot(Q0_values, T_profiles, label = 'T(1)', linewidth = 5)
+    plt.plot(Q0_values_2, Tav_values_2, label = 'Tav_2')
+    plt.plot(Q0_values_2, T_profiles_2, label = 'T(1)_2')
     plt.xlabel('Q0')
     plt.ylabel('T')
     plt.legend()
