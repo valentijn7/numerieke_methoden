@@ -241,7 +241,7 @@ def check_when_back(
     :param dt: step size
     :return: time when the body is back at starting position
     """
-    indices = []            # fina maximal distances, assuming two points
+    indices = []            # final maximal distances, assuming two points
                             # don't have the exact same distance (unlikely)
     for idx in range(1, len(distances) - 1):
         if distances[idx] > distances[idx - 1] and \
@@ -287,7 +287,8 @@ def Kepler_period(
 def simulate_and_get_period(
         dt: int,
         constants: Dict[str, float],
-        total_years: int = 3
+        total_years: int = 3,
+        method: str = 'RK4'
     ) -> float:
     """ Helper function to get the period for multiple dt sizes
 
@@ -299,7 +300,7 @@ def simulate_and_get_period(
     vx0, vy0 = 0, constants['v']
     n = int(365.25 * 24) * total_years
 
-    r_light, _ = simulate_light(rx0, ry0, vx0, vy0, dt, n, constants)
+    r_light, _ = simulate_light(rx0, ry0, vx0, vy0, dt, n, constants, method)
     r_heavy, _ = simulate_heavy(r_light, _, constants)
     distances = np.linalg.norm(r_light - r_heavy, axis = 1)
     times = np.arange(n) * dt / (3600 * 24)
@@ -338,17 +339,17 @@ def calculate_and_plot_all(
     # plt.ylabel('afstand (m)')
     # plt.grid()
     # plt.show()
-    #! TODO voeg toe dat final energy de energie is aan het einde van de baan, niet de simulatie
+    #! TODO zet ook in plot de nieuwe energy waardes
 
     initial_energy = calculate_energy(r_light[0, 0], r_light[0, 1],
                                       v_light[0, 0], v_light[0, 1],
                                       r_heavy[0, 0], r_heavy[0, 1],
                                       v_heavy[0, 0], v_heavy[0, 1],
                                       constants)
-    final_energy = calculate_energy(r_light[-1, 0], r_light[-1, 1],
-                                    v_light[-1, 0], v_light[-1, 1],
-                                    r_heavy[-1, 0], r_heavy[-1, 1],
-                                    v_heavy[-1, 0], v_heavy[-1, 1],
+    final_energy = calculate_energy(r_light[int(period), 0], r_light[int(period), 1],
+                                    v_light[int(period), 0], v_light[int(period), 1],
+                                    r_heavy[int(period), 0], r_heavy[int(period), 1],
+                                    v_heavy[int(period), 0], v_heavy[int(period), 1],
                                     constants)
     energies = np.zeros(n)
     for idx in range(n):
@@ -393,7 +394,7 @@ def calculate_and_plot_all(
 
 
 def main():
-    ### CHANGE INITIAL CONDITIONS HERE!
+    ### CHANGE INITIAL CONDITIONS HERE! (For most of the plots)
     # Source: https://nssdc.gsfc.nasa.gov/planetary/factsheet/
 
     earth_sun_constants = {
@@ -492,73 +493,83 @@ def main():
 
     #################################################################
     # extra task: check for energy conservation for different methods
-    ty = 2
+    ty = 10 # take enough years to make sure all methods complete a period
     dt = 3600
     constants = earth_sun_constants
-
+    
     rx0, ry0 = constants['R'], 0
     vx0, vy0 = 0, constants['v']
     n = int(365.25 * 24) * ty
                                 # Calculate relative change for RK4
     r_light, v_light = simulate_light(rx0, ry0, vx0, vy0, dt, n, constants, 'RK4')
     r_heavy, v_heavy = simulate_heavy(r_light, v_light, constants)
-
+    period = check_when_back(np.linalg.norm(r_light - r_heavy, axis = 1),
+                             np.arange(n) * dt / (3600 * 24))
     initial_energy = calculate_energy(r_light[0, 0], r_light[0, 1],
                                       v_light[0, 0], v_light[0, 1],
                                       r_heavy[0, 0], r_heavy[0, 1],
                                       v_heavy[0, 0], v_heavy[0, 1],
                                       constants)
-    final_energy = calculate_energy(r_light[-1, 0], r_light[-1, 1],
-                                    v_light[-1, 0], v_light[-1, 1],
-                                    r_heavy[-1, 0], r_heavy[-1, 1],
-                                    v_heavy[-1, 0], v_heavy[-1, 1],
+    final_energy = calculate_energy(r_light[int(period), 0], r_light[int(period), 1],
+                                    v_light[int(period), 0], v_light[int(period), 1],
+                                    r_heavy[int(period), 0], r_heavy[int(period), 1],
+                                    v_heavy[int(period), 0], v_heavy[int(period), 1],
                                     constants)
     relative_change = np.abs((final_energy - initial_energy) / initial_energy) * 100
     print(f'Relative change for RK4, dt = 3600: {relative_change}%')
                                 # Calculate relative change for FE
     r_light, v_light = simulate_light(rx0, ry0, vx0, vy0, dt, n, constants, 'FE')
+    r_heavy, v_heavy = simulate_heavy(r_light, v_light, constants)
+    period = check_when_back(np.linalg.norm(r_light - r_heavy, axis = 1),
+                             np.arange(n) * dt / (3600 * 24))
     initial_energy = calculate_energy(r_light[0, 0], r_light[0, 1],
                                       v_light[0, 0], v_light[0, 1],
                                       r_heavy[0, 0], r_heavy[0, 1],
                                       v_heavy[0, 0], v_heavy[0, 1],
                                       constants)
-    final_energy = calculate_energy(r_light[-1, 0], r_light[-1, 1],
-                                    v_light[-1, 0], v_light[-1, 1],
-                                    r_heavy[-1, 0], r_heavy[-1, 1],
-                                    v_heavy[-1, 0], v_heavy[-1, 1],
+    final_energy = calculate_energy(r_light[int(period), 0], r_light[int(period), 1],
+                                    v_light[int(period), 0], v_light[int(period), 1],
+                                    r_heavy[int(period), 0], r_heavy[int(period), 1],
+                                    v_heavy[int(period), 0], v_heavy[int(period), 1],
                                     constants)
     relative_change = np.abs((final_energy - initial_energy) / initial_energy) * 100
     print(f'Relative change for FE, dt = 3600: {relative_change}%')
                                 # Calculate relative change for VV
     r_light, v_light = simulate_light(rx0, ry0, vx0, vy0, dt, n, constants, 'VV')
+    r_heavy, v_heavy = simulate_heavy(r_light, v_light, constants)
+    period = check_when_back(np.linalg.norm(r_light - r_heavy, axis = 1),
+                             np.arange(n) * dt / (3600 * 24))
     initial_energy = calculate_energy(r_light[0, 0], r_light[0, 1],
                                       v_light[0, 0], v_light[0, 1],
                                       r_heavy[0, 0], r_heavy[0, 1],
                                       v_heavy[0, 0], v_heavy[0, 1],
                                       constants)
-    final_energy = calculate_energy(r_light[-1, 0], r_light[-1, 1],
-                                    v_light[-1, 0], v_light[-1, 1],
-                                    r_heavy[-1, 0], r_heavy[-1, 1],
-                                    v_heavy[-1, 0], v_heavy[-1, 1],
+    final_energy = calculate_energy(r_light[int(period), 0], r_light[int(period), 1],
+                                    v_light[int(period), 0], v_light[int(period), 1],
+                                    r_heavy[int(period), 0], r_heavy[int(period), 1],
+                                    v_heavy[int(period), 0], v_heavy[int(period), 1],
                                     constants)
     relative_change = np.abs((final_energy - initial_energy) / initial_energy) * 100
     print(f'Relative change for VV, dt = 3600: {relative_change}%')
                                 # Calculate relative change for VV with dt = 900
-    dt = 900
+    dt = 3600 / 4
+    n *= 4
     r_light, v_light = simulate_light(rx0, ry0, vx0, vy0, dt, n, constants, 'VV')
+    r_heavy, v_heavy = simulate_heavy(r_light, v_light, constants)
+    period = check_when_back(np.linalg.norm(r_light - r_heavy, axis = 1),
+                             np.arange(n) * dt / (3600 * 24))
     initial_energy = calculate_energy(r_light[0, 0], r_light[0, 1],
                                       v_light[0, 0], v_light[0, 1],
                                       r_heavy[0, 0], r_heavy[0, 1],
                                       v_heavy[0, 0], v_heavy[0, 1],
                                       constants)
-    final_energy = calculate_energy(r_light[-1, 0], r_light[-1, 1],
-                                    v_light[-1, 0], v_light[-1, 1],
-                                    r_heavy[-1, 0], r_heavy[-1, 1],
-                                    v_heavy[-1, 0], v_heavy[-1, 1],
+    final_energy = calculate_energy(r_light[int(period), 0], r_light[int(period), 1],
+                                    v_light[int(period), 0], v_light[int(period), 1],
+                                    r_heavy[int(period), 0], r_heavy[int(period), 1],
+                                    v_heavy[int(period), 0], v_heavy[int(period), 1],
                                     constants)
     relative_change = np.abs((final_energy - initial_energy) / initial_energy) * 100
     print(f'Relative change for VV, dt = 900: {relative_change}%')
-
 
     # lastly, uncomment the following code to see the time period does not make
     # the biggest difference in the accuracy of the simulation, apart from 
