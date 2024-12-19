@@ -88,10 +88,6 @@ def derivative(
     sigma = 5.67e-8         # Stefan-Boltzmann coefficient
 
     T, S = state
-
-    # if T > 1000:            #! TODO vragen of dit prima is om wegshooten te voorkomen
-    #     print("large T")
-    #     T = 1000
                             # compute dT/dx and dS/dx (while
                             # avoiding division by zero)
     # dTdx = S / max((1 - x**2), 1e-2)
@@ -127,12 +123,6 @@ def integrate(
                             # integrate for n steps and save state
     for idx in range(n):
         state = RK4(state, x_values[idx], dx, derivative, Q0)
-                            # cap the temperature at 1000K to avoid unrealistic values
-        #                     #! TODO vragen of dit prima is om wegshooten te voorkomen
-        # if state[0] > 1000:
-        #     print('large T')
-        #     state[0] = 1000
-        # print(state[0], state[1])
                             # save the values
         T_values[idx + 1] = state[0]
         S_values[idx + 1] = state[1]
@@ -177,9 +167,6 @@ def newton_shoot(
             return T0
                             # if not, update T0 with the derivative
                             # as calculated by the symmetric three-point formula
-        # print(1, shoot_T0_for_S1(T0 + dT, Q0))
-        # print(2, shoot_T0_for_S1(T0 - dT, Q0))
-        
         dS1dT = (shoot_T0_for_S1(T0 + dT, Q0) - \
                  shoot_T0_for_S1(T0 - dT, Q0)) \
                  / (2 * dT)
@@ -202,6 +189,7 @@ def newton_shoot(
                             # see if the Newton-Raphson method converges
         T0_next = T0 - S1_candidate / dS1dT
         if np.abs(T0_next - T0) < tolerance:
+            print()
             return T0_next
         T0 = T0_next        # continue with the next iteration
 
@@ -209,11 +197,36 @@ def newton_shoot(
     return T0
 
 
+def search_branch(
+        T0: float,
+        Q0_s: float,
+) -> Tuple[np.array, np.array, np.array]:
+    """ Finds a branch of T values given a T0 and range of Q0 values
+
+    :param T0: initial temperature in K
+    :param Q0_values: range of planetary average incoming solar radiation
+    :return: Q0_values, T_profiles, Tav_values
+    """
+    Q0_values = []
+    T0_values = []
+    Tav_values = []
+    
+    for Q0 in Q0_s:
+        T0 = newton_shoot(T0, Q0)
+        _, T_values, _ = integrate(T0, Q0)
+        Tav = planetary_avg_T(T_values)
+
+        Q0_values.append(Q0)
+        T0_values.append(T0)
+        Tav_values.append(Tav)
+
+    return np.array(Q0_values), np.array(T0_values), np.array(Tav_values)
+
 
 def main():
-    T0_1 = 215
-    T0_2 = 225
-    T0_3 = 235
+    T0_1 = 230
+    T0_2 = 240
+    T0_3 = 310
     Q0_1 = 300
     Q0_2 = 350
     Q0_3 = 400
@@ -243,10 +256,12 @@ def main():
 
     plt.xlabel('x (integratievariabele)', fontsize = 14)
     plt.ylabel('T (Kelvin)', fontsize = 14)
-    plt.legend()
+    plt.xticks(fontsize = 14)
+    plt.yticks(fontsize = 14)
+    plt.legend(fontsize = 14, facecolor = '#F0F0F0')
     plt.grid(True, which = 'both', alpha = 0.8)
+    plt.tight_layout()
     plt.show()
-
 
     # T0_values = np.linspace(230, 350, 100)
     # Q0 = 300
@@ -269,58 +284,111 @@ def main():
     # print(f'Found T0 of {T0:.3f}')
     # print(f'Verify: S(1) = {shoot_T0_for_S1(T0, Q0):.3f}')
 
+    # Q_values_up = np.linspace(200, 500, 20)
+    # Q_values_down = np.linspace(500, 200, 20)
 
-    Q0_values = np.linspace(200, 500, 10)
-    Tav_values = np.zeros(len(Q0_values))
-    T_profiles = np.zeros(len(Q0_values))
+    Q_up, T0_up, Tav_up = search_branch(200, np.linspace(200, 500, 25))
+    Q_down, T0_down, Tav_down = search_branch(325, np.linspace(500, 200, 25))
+
+    print(Q_up, T0_up, Tav_up)
+    print(Q_down, T0_down, Tav_down)
+
+    plt.figure(figsize = (6, 6))
+    plt.plot(Q_up, Tav_up, label = 'up', marker = 'o', color = '#FF0000')
+    plt.plot(Q_down, Tav_down, label = 'down', marker = 'o', color = '#0000FF')
+    plt.xlabel('Q0', fontsize = 14)
+    plt.ylabel('Tav', fontsize = 14)
+    plt.xticks(fontsize = 14)
+    plt.yticks(fontsize = 14)
+    plt.legend(fontsize = 14, facecolor = '#F0F0F0')
+    plt.grid(True, which = 'both', alpha = 0.8)
+    plt.tight_layout()
+    plt.show()
+
+    # Search for values in middle branch
+    highest_Tav_idx = np.argmax(Tav_up[np.isfinite(Tav_up)])
+    lowest_Tav_idx = np.argmin(Tav_down)
+
+    print(f'highest Tav in up = {Tav_up[highest_Tav_idx]:.3f} for Q0 = {Q_up[highest_Tav_idx]:.3f}')
+    print(f'lowest Tav in down = {Tav_down[lowest_Tav_idx]:.3f} for Q0 = {Q_down[lowest_Tav_idx]:.3f}')
+
+    Q_bases = np.linspace(Q_down[lowest_Tav_idx], Q_up[highest_Tav_idx], 100)
+    print(Q_bases)
+
+    T0_bases_up = T0_up[lowest_Tav_idx : highest_Tav_idx]
+    T0_bases_down = T0_down[lowest_Tav_idx : highest_Tav_idx]
+    print(T0_bases_up)
+    print(T0_bases_down)
+
+    # now, between the every idx of both T0_bases, search for solutions
+    ### INSERT HERE
+    
+    
+    
+    # plt.figure(figsize = (6, 6))
+    # plt.plot(Q_up, Tav_up, label = 'up')
+    # plt.plot(Q_down, Tav_down, label = 'down')
+    # # plot the idx with the highest Tav with different colour to be sure it's the same
+    # plt.plot(Q_up[highest_Tav_idx], Tav_up[highest_Tav_idx], 'ro')
+    # plt.plot(Q_down[lowest_Tav_idx], Tav_down[lowest_Tav_idx], 'ro')
+    # plt.xlabel('Q0')
+    # plt.ylabel('Tav')
+    # plt.legend()
+    # plt.grid(True, which = 'both', alpha = 0.8)
+    # plt.show()
+    
+
+    # Q0_values = np.linspace(200, 500, 10)
+    # Tav_values = np.zeros(len(Q0_values))
+    # T_profiles = np.zeros(len(Q0_values))
   
-    T0 = 230
-    idx = 0
-    for Q0 in Q0_values:
-        print(f'\nT0: {T0}, Q0: {Q0}')
-        T0 = newton_shoot(T0, Q0)
-        x_values, T_values, _ = integrate(T0, Q0)
-        Tav_values[idx] = planetary_avg_T(x_values, T_values)
-        T_profiles[idx] = T_values[-1]
-        print(f'Found T_avg of {Tav_values[idx]:.3f} for Q0 = {Q0}')
-        idx += 1
+    # T0 = 230
+    # idx = 0
+    # for Q0 in Q0_values:
+    #     print(f'\nT0: {T0}, Q0: {Q0}')
+    #     T0 = newton_shoot(T0, Q0)
+    #     x_values, T_values, _ = integrate(T0, Q0)
+    #     Tav_values[idx] = planetary_avg_T(x_values, T_values)
+    #     T_profiles[idx] = T_values[-1]
+    #     print(f'Found T_avg of {Tav_values[idx]:.3f} for Q0 = {Q0}')
+    #     idx += 1
+
+    # # plt.figure(figsize = (6, 6))
+    # # plt.plot(Q0_values, Tav_values, label = 'Tav')
+    # # plt.plot(Q0_values, T_profiles, label = 'T(1)')
+    # # plt.xlabel('Q0')
+    # # plt.ylabel('T')
+    # # plt.legend()
+    # # plt.grid(True, which = 'both', alpha = 0.8)
+    # # plt.show()
+
+    # print('\n\nTake 2\n\n')
+
+    # Q0_values_2 = np.linspace(500, 200, 10)
+    # Tav_values_2 = np.zeros(len(Q0_values))
+    # T_profiles_2 = np.zeros(len(Q0_values))
+  
+    # T0 = 400
+    # idx = 0
+    # for Q0 in Q0_values_2:
+    #     print(f'\nT0: {T0}, Q0: {Q0}')
+    #     T0 = newton_shoot(T0, Q0)
+    #     x_values, T_values, _ = integrate(T0, Q0)
+    #     Tav_values_2[idx] = planetary_avg_T(T_values)
+    #     T_profiles_2[idx] = T_values[-1]
+    #     print(f'Found T_avg of {Tav_values_2[idx]:.3f} for Q0 = {Q0}')
+    #     idx += 1
 
     # plt.figure(figsize = (6, 6))
-    # plt.plot(Q0_values, Tav_values, label = 'Tav')
-    # plt.plot(Q0_values, T_profiles, label = 'T(1)')
+    # plt.plot(Q0_values, Tav_values, label = 'Tav', linewidth = 5)
+    # plt.plot(Q0_values, T_profiles, label = 'T(1)', linewidth = 5)
+    # plt.plot(Q0_values_2, Tav_values_2, label = 'Tav_2')
+    # plt.plot(Q0_values_2, T_profiles_2, label = 'T(1)_2')
     # plt.xlabel('Q0')
     # plt.ylabel('T')
     # plt.legend()
     # plt.grid(True, which = 'both', alpha = 0.8)
     # plt.show()
-
-    print('\n\nTake 2\n\n')
-
-    Q0_values_2 = np.linspace(500, 200, 10)
-    Tav_values_2 = np.zeros(len(Q0_values))
-    T_profiles_2 = np.zeros(len(Q0_values))
-  
-    T0 = 400
-    idx = 0
-    for Q0 in Q0_values_2:
-        print(f'\nT0: {T0}, Q0: {Q0}')
-        T0 = newton_shoot(T0, Q0)
-        x_values, T_values, _ = integrate(T0, Q0)
-        Tav_values_2[idx] = planetary_avg_T(T_values)
-        T_profiles_2[idx] = T_values[-1]
-        print(f'Found T_avg of {Tav_values_2[idx]:.3f} for Q0 = {Q0}')
-        idx += 1
-
-    plt.figure(figsize = (6, 6))
-    plt.plot(Q0_values, Tav_values, label = 'Tav', linewidth = 5)
-    plt.plot(Q0_values, T_profiles, label = 'T(1)', linewidth = 5)
-    plt.plot(Q0_values_2, Tav_values_2, label = 'Tav_2')
-    plt.plot(Q0_values_2, T_profiles_2, label = 'T(1)_2')
-    plt.xlabel('Q0')
-    plt.ylabel('T')
-    plt.legend()
-    plt.grid(True, which = 'both', alpha = 0.8)
-    plt.show()
 
 
 if __name__ == '__main__':
