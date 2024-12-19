@@ -463,6 +463,8 @@ def main():
 
     plt.xlabel('tijd (dagen)', fontsize = 14)
     plt.ylabel('afstand (m), gestandaardiseerd', fontsize = 14)
+    plt.xticks(fontsize = 14)
+    plt.yticks(fontsize = 14)
     plt.legend(fontsize = 14, facecolor = '#F0F0F0')
     plt.grid(True, which = 'both', alpha = 0.8)
     plt.tight_layout()
@@ -486,6 +488,8 @@ def main():
                 label = '3e wet van Kepler')
     plt.xlabel('beginsnelheid (m/s)', fontsize = 14)
     plt.ylabel('periode (dagen)', fontsize = 14)
+    plt.xticks(fontsize = 14)
+    plt.yticks(fontsize = 14)
     plt.grid(True, which = 'both', alpha = 0.8)
     plt.legend(fontsize = 14, facecolor = '#F0F0F0')
     plt.tight_layout()
