@@ -90,10 +90,8 @@ def derivative(
     T, S = state
                             # compute dT/dx and dS/dx (while
                             # avoiding division by zero)
-    # dTdx = S / max((1 - x**2), 1e-2)
     dTdx = S / ((1 - x**2) + 1e-1)
     dSdx = (epsilon * sigma * T**4 - Q(x, Q0) * (1 - alpha(T))) / D
-    # print(T**4)
     return np.array([dTdx, dSdx])
 
 
@@ -176,7 +174,6 @@ def newton_shoot(
         #     break
 
         if np.abs(dS1dT) < 1e-2:
-
             print("Warning: derivative too small in newton_shoot()")
             break
         
@@ -185,7 +182,6 @@ def newton_shoot(
         if np.isnan(S1_candidate) or np.isnan(dS1dT):
             print("Warning: newton_shoot() found a nan")
             break
-
                             # see if the Newton-Raphson method converges
         T0_next = T0 - S1_candidate / dS1dT
         if np.abs(T0_next - T0) < tolerance:
@@ -226,7 +222,8 @@ def search_branch(
 def main():
     T0_1 = 230
     T0_2 = 240
-    T0_3 = 310
+    T0_3 = 249
+    T0_4 = 310
     Q0_1 = 300
     Q0_2 = 350
     Q0_3 = 400
@@ -236,9 +233,10 @@ def main():
     T_avg_2 = planetary_avg_T(T_values_2)
     x_values_3, T_values_3, S_values_3 = integrate(T0_3, Q0_3)
     T_avg_3 = planetary_avg_T(T_values_3)
+    x_values_4, T_values_4, S_values_4 = integrate(T0_4, Q0_3)
+    T_avg_4 = planetary_avg_T(T_values_4)
 
                             # plot the results
-                            #! TODO zet de T waardes er ook in in label
     plt.figure(figsize = (6, 6))
     plt.plot(x_values_1, T_values_1, label = r'$\mathrm{T}, \mathrm{T} =, \mathrm{Q}_0 = 300$',
              color = '#FF0000')
@@ -252,8 +250,9 @@ def main():
              color = '#0000FF')
     plt.axhline(T_avg_3, color = '#0000FF', linestyle = 'dashed',
                 label = r'$\mathrm{T}_{\mathrm{avg}}, \mathrm{Q}_0 = 400$')
-
-
+    plt.plot(x_values_4, T_values_4,
+                color = '#0000FF')
+    plt.axhline(T_avg_4, color = '#0000FF', linestyle = 'dashed')
     plt.xlabel('x (integratievariabele)', fontsize = 14)
     plt.ylabel('T (Kelvin)', fontsize = 14)
     plt.xticks(fontsize = 14)
@@ -263,32 +262,8 @@ def main():
     plt.tight_layout()
     plt.show()
 
-    # T0_values = np.linspace(230, 350, 100)
-    # Q0 = 300
-    # S1_values = [0] * len(T0_values)
-    # for idx in range(len(T0_values)):
-    #     S1_values[idx] = shoot_T0_for_S1(T0_values[idx], Q0)
-
-    # plt.figure(figsize = (6, 6))
-    # plt.plot(T0_values, S1_values)
-    # plt.xlabel('T0')
-    # plt.ylabel('S1')
-    # plt.yscale('log')
-    # # plt.legend()
-    # plt.grid(True, which = 'both', alpha = 0.8)
-    # plt.show()
-
-    # T0 = 300
-    # Q0 = 300
-    # T0 = newton_shoot(T0, Q0)
-    # print(f'Found T0 of {T0:.3f}')
-    # print(f'Verify: S(1) = {shoot_T0_for_S1(T0, Q0):.3f}')
-
-    # Q_values_up = np.linspace(200, 500, 20)
-    # Q_values_down = np.linspace(500, 200, 20)
-
-    Q_up, T0_up, Tav_up = search_branch(200, np.linspace(200, 500, 25))
-    Q_down, T0_down, Tav_down = search_branch(325, np.linspace(500, 200, 25))
+    Q_up, T0_up, Tav_up = search_branch(200, np.linspace(200, 500, 50))
+    Q_down, T0_down, Tav_down = search_branch(325, np.linspace(500, 200, 50))
 
     print(Q_up, T0_up, Tav_up)
     print(Q_down, T0_down, Tav_down)
@@ -305,90 +280,56 @@ def main():
     plt.tight_layout()
     plt.show()
 
-    # Search for values in middle branch
+                            # search for values in middle branch by:
+                            # (1) locking an x-interval to look in
     highest_Tav_idx = np.argmax(Tav_up[np.isfinite(Tav_up)])
     lowest_Tav_idx = np.argmin(Tav_down)
-
     print(f'highest Tav in up = {Tav_up[highest_Tav_idx]:.3f} for Q0 = {Q_up[highest_Tav_idx]:.3f}')
     print(f'lowest Tav in down = {Tav_down[lowest_Tav_idx]:.3f} for Q0 = {Q_down[lowest_Tav_idx]:.3f}')
-
-    Q_bases = np.linspace(Q_down[lowest_Tav_idx], Q_up[highest_Tav_idx], 100)
-    print(Q_bases)
-
+                            # (2) locking an y-interval to look in
     T0_bases_up = T0_up[lowest_Tav_idx : highest_Tav_idx]
     T0_bases_down = T0_down[lowest_Tav_idx : highest_Tav_idx]
-    print(T0_bases_up)
-    print(T0_bases_down)
-
-    # now, between the every idx of both T0_bases, search for solutions
-    ### INSERT HERE
+    if len(T0_bases_up) != len(T0_bases_down):
+        raise ValueError('Lengths of base arrays unequal')
+    Q_bases = np.linspace(Q_down[lowest_Tav_idx], Q_up[highest_Tav_idx], len(T0_bases_up))
     
-    
-    
-    # plt.figure(figsize = (6, 6))
-    # plt.plot(Q_up, Tav_up, label = 'up')
-    # plt.plot(Q_down, Tav_down, label = 'down')
-    # # plot the idx with the highest Tav with different colour to be sure it's the same
-    # plt.plot(Q_up[highest_Tav_idx], Tav_up[highest_Tav_idx], 'ro')
-    # plt.plot(Q_down[lowest_Tav_idx], Tav_down[lowest_Tav_idx], 'ro')
-    # plt.xlabel('Q0')
-    # plt.ylabel('Tav')
-    # plt.legend()
-    # plt.grid(True, which = 'both', alpha = 0.8)
-    # plt.show()
-    
+    n_guesses = 20
+    Q_converged = []
+    T0_converged = []
+    Tav_converged = []
+                            # (3) brute-forcing for transitionary solutions
+    print(f'\n\nBrute-forcing {n_guesses * len(Q_bases)} transitionary solutions\n\n')
+    for idx, Q_base in enumerate(Q_bases):
+        T0_candidates = np.linspace(T0_bases_down[idx], T0_bases_up[idx], n_guesses)
+                            # (4) checking if the transitionary solutions are valid
+        for T0_candidate in T0_candidates:
+            T_candidate = newton_shoot(T0_candidate, Q_base)
+            S1_final = shoot_T0_for_S1(T_candidate, Q_base)
+            if np.abs(S1_final) < 1e-6:
+                _, T_converged, _ = integrate(T_candidate, Q_base)
+                Tav_final = planetary_avg_T(T_converged)
+                            # (5) see if they are within the bounds of interest
+                if Tav_final < Tav_up[highest_Tav_idx] or \
+                    Tav_final > Tav_down[lowest_Tav_idx]:
+                    continue
+                             # (6) if all checks have passed, save the values
+                Q_converged.append(Q_base)
+                T0_converged.append(T_converged)
+                Tav_converged.append(Tav_final)
 
-    # Q0_values = np.linspace(200, 500, 10)
-    # Tav_values = np.zeros(len(Q0_values))
-    # T_profiles = np.zeros(len(Q0_values))
-  
-    # T0 = 230
-    # idx = 0
-    # for Q0 in Q0_values:
-    #     print(f'\nT0: {T0}, Q0: {Q0}')
-    #     T0 = newton_shoot(T0, Q0)
-    #     x_values, T_values, _ = integrate(T0, Q0)
-    #     Tav_values[idx] = planetary_avg_T(x_values, T_values)
-    #     T_profiles[idx] = T_values[-1]
-    #     print(f'Found T_avg of {Tav_values[idx]:.3f} for Q0 = {Q0}')
-    #     idx += 1
-
-    # # plt.figure(figsize = (6, 6))
-    # # plt.plot(Q0_values, Tav_values, label = 'Tav')
-    # # plt.plot(Q0_values, T_profiles, label = 'T(1)')
-    # # plt.xlabel('Q0')
-    # # plt.ylabel('T')
-    # # plt.legend()
-    # # plt.grid(True, which = 'both', alpha = 0.8)
-    # # plt.show()
-
-    # print('\n\nTake 2\n\n')
-
-    # Q0_values_2 = np.linspace(500, 200, 10)
-    # Tav_values_2 = np.zeros(len(Q0_values))
-    # T_profiles_2 = np.zeros(len(Q0_values))
-  
-    # T0 = 400
-    # idx = 0
-    # for Q0 in Q0_values_2:
-    #     print(f'\nT0: {T0}, Q0: {Q0}')
-    #     T0 = newton_shoot(T0, Q0)
-    #     x_values, T_values, _ = integrate(T0, Q0)
-    #     Tav_values_2[idx] = planetary_avg_T(T_values)
-    #     T_profiles_2[idx] = T_values[-1]
-    #     print(f'Found T_avg of {Tav_values_2[idx]:.3f} for Q0 = {Q0}')
-    #     idx += 1
-
-    # plt.figure(figsize = (6, 6))
-    # plt.plot(Q0_values, Tav_values, label = 'Tav', linewidth = 5)
-    # plt.plot(Q0_values, T_profiles, label = 'T(1)', linewidth = 5)
-    # plt.plot(Q0_values_2, Tav_values_2, label = 'Tav_2')
-    # plt.plot(Q0_values_2, T_profiles_2, label = 'T(1)_2')
-    # plt.xlabel('Q0')
-    # plt.ylabel('T')
-    # plt.legend()
-    # plt.grid(True, which = 'both', alpha = 0.8)
-    # plt.show()
+    plt.figure(figsize = (6, 6))
+    plt.plot(Q_up, Tav_up, label = 'stijgende tak', marker = 'o', color = '#FF0000')
+    plt.plot(Q_down, Tav_down, label = 'dalende tak', marker = 'o', color = '#0000FF')
+    plt.plot(np.array(Q_converged), np.array(Tav_converged), label = 'tussentak',
+             marker = 'o', color = '#00FF00')
+    plt.xlabel('$Q_0$', fontsize = 16)
+    plt.ylabel('$T_{av}$', fontsize = 16)
+    plt.xticks(fontsize = 14)
+    plt.yticks(fontsize = 14)
+    plt.legend(fontsize = 14, facecolor = '#F0F0F0')
+    plt.grid(True, which = 'both', alpha = 0.8)
+    plt.tight_layout()
+    plt.show()
 
 
 if __name__ == '__main__':
