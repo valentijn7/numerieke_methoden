@@ -220,10 +220,12 @@ def search_branch(
 
 
 def main():
+    #TODO voeg ook de andere oplossing van Q0 = 400 toe
     T0_1 = 230
     T0_2 = 240
-    T0_3 = 249
-    T0_4 = 310
+    T0_3_1 = 249
+    T0_3_2 = 255
+    T0_3_3 = 310
     Q0_1 = 300
     Q0_2 = 350
     Q0_3 = 400
@@ -231,28 +233,34 @@ def main():
     T_avg_1 = planetary_avg_T(T_values_1)
     x_values_2, T_values_2, S_values_2 = integrate(T0_2, Q0_2)
     T_avg_2 = planetary_avg_T(T_values_2)
-    x_values_3, T_values_3, S_values_3 = integrate(T0_3, Q0_3)
-    T_avg_3 = planetary_avg_T(T_values_3)
-    x_values_4, T_values_4, S_values_4 = integrate(T0_4, Q0_3)
-    T_avg_4 = planetary_avg_T(T_values_4)
+    x_values_3_1, T_values_3_1, S_values_3_1 = integrate(T0_3_1, Q0_3)
+    T_avg_3_1 = planetary_avg_T(T_values_3_1)
+    x_values_3_2, T_values_3_2, S_values_3_2 = integrate(T0_3_2, Q0_3)
+    T_avg_3_2 = planetary_avg_T(T_values_3_2)
+    x_values_3_3, T_values_3_3, S_values_3_3 = integrate(T0_3_3, Q0_3)
+    T_avg_3_3 = planetary_avg_T(T_values_3_3)
 
                             # plot the results
     plt.figure(figsize = (6, 6))
-    plt.plot(x_values_1, T_values_1, label = r'$\mathrm{T}, \mathrm{T} =, \mathrm{Q}_0 = 300$',
+    plt.plot(x_values_1, T_values_1, label = r'$\mathrm{T(x)}, \mathrm{Q}_0 = 300$',
              color = '#FF0000')
     plt.axhline(T_avg_1, color = '#FF0000', linestyle = 'dashed',
                 label = r'$\mathrm{T}_{\mathrm{avg}}, \mathrm{Q}_0 = 300$')
-    plt.plot(x_values_2, T_values_2, label = r'$\mathrm{T}, \mathrm{Q}_0 = 350$',
+    plt.plot(x_values_2, T_values_2, label = r'$\mathrm{T(x)}, \mathrm{Q}_0 = 350$',
              color = '#00FF00')
     plt.axhline(T_avg_2, color = '#00FF00', linestyle = 'dashed',
                 label = r'$\mathrm{T}_{\mathrm{avg}}, \mathrm{Q}_0 = 350$')
-    plt.plot(x_values_3, T_values_3, label = r'$\mathrm{T}, \mathrm{Q}_0 = 400$',
+    plt.plot(x_values_3_1, T_values_3_1, label = r'$\mathrm{T(x)}, \mathrm{Q}_0 = 400$',
              color = '#0000FF')
-    plt.axhline(T_avg_3, color = '#0000FF', linestyle = 'dashed',
+    plt.axhline(T_avg_3_1, color = '#0000FF', linestyle = 'dashed',
                 label = r'$\mathrm{T}_{\mathrm{avg}}, \mathrm{Q}_0 = 400$')
-    plt.plot(x_values_4, T_values_4,
+    plt.plot(x_values_3_2, T_values_3_2, label = r'$\mathrm{T(x)}, \mathrm{Q}_0 = 400$ (onfysisch)',
+                color = 'black')
+    plt.axhline(T_avg_3_2, color = 'black', linestyle = 'dashed',
+                label = r'$\mathrm{T}_{\mathrm{avg}}, \mathrm{Q}_0 = 400$')
+    plt.plot(x_values_3_3, T_values_3_3,
                 color = '#0000FF')
-    plt.axhline(T_avg_4, color = '#0000FF', linestyle = 'dashed')
+    plt.axhline(T_avg_3_3, color = '#0000FF', linestyle = 'dashed')
     plt.xlabel('x', fontsize = 16)
     plt.ylabel('T (Kelvin)', fontsize = 16)
     plt.xticks(fontsize = 14)
