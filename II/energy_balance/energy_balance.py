@@ -253,8 +253,8 @@ def main():
     plt.plot(x_values_4, T_values_4,
                 color = '#0000FF')
     plt.axhline(T_avg_4, color = '#0000FF', linestyle = 'dashed')
-    plt.xlabel('x (integratievariabele)', fontsize = 14)
-    plt.ylabel('T (Kelvin)', fontsize = 14)
+    plt.xlabel('x', fontsize = 16)
+    plt.ylabel('T (Kelvin)', fontsize = 16)
     plt.xticks(fontsize = 14)
     plt.yticks(fontsize = 14)
     plt.legend(fontsize = 14, facecolor = '#F0F0F0')
@@ -322,8 +322,8 @@ def main():
     plt.plot(Q_down, Tav_down, label = 'dalende tak', marker = 'o', color = '#0000FF')
     plt.plot(np.array(Q_converged), np.array(Tav_converged), label = 'tussentak',
              marker = 'o', color = '#00FF00')
-    plt.xlabel('$Q_0$', fontsize = 16)
-    plt.ylabel('$T_{av}$', fontsize = 16)
+    plt.xlabel('$Q_0$ $(\mathrm{W}/\mathrm{m}^{-2})$', fontsize = 16)
+    plt.ylabel('$T_{av}$ (Kelvin)', fontsize = 16)
     plt.xticks(fontsize = 14)
     plt.yticks(fontsize = 14)
     plt.legend(fontsize = 14, facecolor = '#F0F0F0')
