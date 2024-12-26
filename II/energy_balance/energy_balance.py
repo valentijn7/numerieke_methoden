@@ -330,7 +330,7 @@ def main():
     plt.plot(Q_down, Tav_down, label = 'dalende tak', marker = 'o', color = '#0000FF')
     plt.plot(np.array(Q_converged), np.array(Tav_converged), label = 'tussentak',
              marker = 'o', color = '#00FF00')
-    plt.xlabel('$Q_0$ $(\mathrm{W}/\mathrm{m}^{-2})$', fontsize = 16)
+    plt.xlabel('$Q_0$ $(\mathrm{W}/\mathrm{m}^{2})$', fontsize = 16)
     plt.ylabel('$T_{av}$ (Kelvin)', fontsize = 16)
     plt.xticks(fontsize = 14)
     plt.yticks(fontsize = 14)
