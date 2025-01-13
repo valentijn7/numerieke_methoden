@@ -5,24 +5,27 @@ from scipy import special
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import matplotlib
+from datetime import datetime
 
+start_time = datetime.now()
 
 class PhysConstants:
     def __init__(self):
-        self.kappa   = 2        # thermal diffusion coefficient (m2/s)
+        self.kappa   = 5        # thermal diffusion coefficient (m2/s)
                                 #   temperatures:
         self.T0      = 273      # initial temperature rod (K)
         self.T1      = 373      # temperature of rod at x = 0 for t > 0
                                 #   rod properties:
-        self.L       = 10        # length of the rod (m)
-        self.n_x     = 100      # number of gridpoints in the rod
+        self.L       = 10       # length of the rod (m)
+        self.n_x     = 101      # number of gridpoints in the rod
                                 # step size of the grid
         self.dx      = self.L / self.n_x
                                 #   simulation properties:
-        self.t_total = 0.01     # total time of the simulation (s)
-        self.dt      = 0.0001   # time step of the simulation (s)
-                                # number of time steps
-        self.n_t     = int(self.t_total / self.dt)
+        self.t_total = 0.3      # total time of the simulation (s)
+        self.n_t     = 3001     # number of timesteps
+                                # time step of the simulation (s)
+        self.dt      = self.t_total / (self.n_t - 1)
 
 
 def forward_euler(
@@ -71,7 +74,8 @@ def adam_bashforth(
         current_time: float,
         step_size: float,
         derivative: callable,
-        C: PhysConstants) -> np.array:
+        C: PhysConstants
+    ) -> np.array:
     """
     Performs one step of the Adams-Bashforth method
 
@@ -86,10 +90,6 @@ def adam_bashforth(
     return current_state + step_size * \
         (1.5 * derivative(current_state, current_time, C) \
          - 0.5 * derivative(prev_state, current_time, C))
-
-
-def crank_nicholson(
-        
 
 
 def RK4(
@@ -120,7 +120,8 @@ def RK4(
 def derivative_heat(
         T: np.array,
         _: float,
-        cons: PhysConstants) -> np.array:
+        cons: PhysConstants
+    ) -> np.array:
     """ Calculates the derivative of the rod using the heat equation
     
     :param T: temperature array of the rod
@@ -158,12 +159,24 @@ def theoretical(
         return C.T0 + (C.T1 - C.T0) * special.erfc(x_arr / (2 * np.sqrt(C.kappa * t)))
 
 
-def Task1_caller(L: int,
-                 nx: int,
-                 t_total: int,
-                 dt: int,
-                 TimeSteppingMethod: str, 
-                 DiffMethod: str = "CD"
+def calculate_sigma_ratio(
+        C: PhysConstants
+    ) -> float:
+    """ Calculates the ratio of the time step to the spatial step
+
+    :param C: class (struct) with constants
+    :return: ratio of the time step to the spatial step
+    """
+    return C.kappa * C.dt / C.dx**2
+
+
+def Task1_caller(
+        L: int,
+        nx: int,
+        t_total: int,
+        dt: int,
+        TimeSteppingMethod: str, 
+        DiffMethod: str = "CD"
     ) -> Tuple[np.array, np.array, np.array]:
     """ This routine calls the function that solves the heat equation
 
@@ -191,23 +204,37 @@ def Task1_caller(L: int,
     Result      a 2-D array (size [nx, nt]), with the results of the routine    
     """
     C = PhysConstants() 
+    nt = int(t_total / dt + 1)
+    dx = L / (nx - 1)
+    global sigma
+    sigma = (C.kappa * dt) / dx**2
+    
                                 # first, we define a grid, or matrix, for space and time;
-    grid = np.ndarray(shape = (C.n_x, C.n_t), dtype = float)
+    grid = np.ndarray(shape = (nx, nt), dtype = float)
     grid[:] = np.nan
     grid[:, 0] = C.T0
     grid[0, :] = C.T1
     grid[:, -1] = 0.0 
+
                                 # second, we define the space and time arrays
-    time = np.arange(0, t_total, dt)
-    space = np.arange(0, L, L / nx)
-                                # third, solve heat equation
+    # global time and space
+    time = np.arange(0, t_total + t_total / (nt - 1), t_total / (nt - 1))
+    space = np.arange(0, L + dx, dx)
+    
+    global timespacing
+    timespacing = int(nt / 5)                            
+    # third, solve heat equation
     if TimeSteppingMethod == "Theory":
         for idx in range(1, len(time)):
             grid[:, idx] = theoretical(space, time[idx], C)
+        global T_arr_th
+        T_arr_th = grid[:,::timespacing].copy() # For plotting the first couple of time-values
 
     elif TimeSteppingMethod == "FE":
         for idx in range(1, len(time)):
             grid[:, idx] = forward_euler(grid[:, idx - 1], time[idx - 1], dt, derivative_heat, C)
+        global T_arr_FE
+        T_arr_FE = grid[:,::timespacing].copy() 
 
     elif TimeSteppingMethod == "LF":
         for idx in range(1, len(time)):
@@ -215,27 +242,46 @@ def Task1_caller(L: int,
                 grid[:, idx] = forward_euler(grid[:, idx - 1], time[idx - 1], dt, derivative_heat, C)
             else:
                 grid[:, idx] = leap_frog(grid[:, idx - 2], grid[:, idx - 1], time[idx - 1], dt, derivative_heat, C)
-
+        global T_arr_LF
+        T_arr_LF = grid[:,::timespacing].copy()
+        
     elif TimeSteppingMethod == "AB":
         for idx in range(1, len(time)):
             if idx == 1:
                 grid[:, idx] = forward_euler(grid[:, idx - 1], time[idx - 1], dt, derivative_heat, C)
             else:
                 grid[:, idx] = adam_bashforth(grid[:, idx - 2], grid[:, idx - 1], time[idx - 1], dt, derivative_heat, C)
-
+        global T_arr_AB
+        T_arr_AB = grid[:,::timespacing].copy()
+        
     elif TimeSteppingMethod == "RK4":
         for idx in range(1, len(time)):
             grid[:, idx] = RK4(grid[:, idx - 1], time[idx - 1], dt, derivative_heat, C)
-
+        global T_arr_RK4
+        T_arr_RK4 = grid[:,::timespacing].copy()
+        
+    # elif TimeSteppingMethod == "CN":
+    #     for idx in range(1,len(time)):
+            
     else:
         raise ValueError("Invalid TimeSteppingMethod")
-
+    
+    # Now we plot our data. We will plot the theoretical data vs. the 
+    # numerical data seperately, i.e. we get 5 plots.
+    
+    
+    
     return time, space, grid   
 
 
+#%%
 def main():
     #! TODO bereken die ratio van de lecture slides
     C = PhysConstants()
+    sigma = calculate_sigma_ratio(C)
+    print(f"sigma = {sigma:.4f}")
+
+
 
     time, space, grid_th = Task1_caller(
         C.L,
@@ -272,7 +318,7 @@ def main():
         C.dt,
         "RK4")
     
-    ######### PLotting #########
+    ######### Plotting #########
 
     grids = [grid_th, grid_FE, grid_LF, grid_AB, grid_RK4]
 
@@ -286,12 +332,12 @@ def main():
                                 # set limits, labels, grid, legend, ticks
     ax.set_xlim(space[0], space[-1])
     ax.set_ylim(np.nanmin(grids), np.nanmax(grids))
-    ax.set_xlabel("rod (m)", fontsize = 16)
-    ax.set_ylabel("temperature (K)", fontsize = 16)
+    ax.set_xlabel("rod (m)", fontsize = 18)
+    ax.set_ylabel("temperature (K)", fontsize = 18)
+    plt.legend(fontsize = 18)
+    plt.xticks(fontsize = 18)
+    plt.yticks(fontsize = 18)
     ax.grid(True)
-    plt.legend(fontsize = 16)
-    plt.xticks(fontsize = 16)
-    plt.yticks(fontsize = 16)
 
     def init():                 # create empty plot animation
         line_FE.set_data([], [])
@@ -315,7 +361,7 @@ def main():
         y_RK4 = grid_RK4[:, frame]
         line_RK4.set_data(space, y_RK4)
 
-        ax.set_title(f"t = {time[frame]:.4f} s", fontsize = 16)
+        ax.set_title(f"t = {time[frame]:.4f} s", fontsize = 18)
         return line_FE, line_LF, line_AB, line_RK4, line_th
 
     # https://matplotlib.org/stable/api/_as_gen/matplotlib.animation.FuncAnimation.html
@@ -326,7 +372,35 @@ def main():
                                   interval = 100)
 
     plt.show()
-
+    
+    # now, we plot our data in stationary graphs. We will plot theoretical vs
+    # numerical for each method, resulting in 5 plots different plots
+    
+    global methods_list
+    methods_list = [T_arr_FE, T_arr_LF, T_arr_AB, T_arr_RK4] # and CN once we get it
+    
+    name_list = ['Forward Euler', 'Leap Frog', 'Adams-Bashforth', 'Runge-Kutta-4', 'Crank-Nicholson']
+    
+    name_counter = 0
+    for T_results in methods_list:
+        plt.figure()
+        for index in range(1,T_results.shape[1]):
+            plt.plot(space, T_results[:, index], label = f't = {timespacing * C.dt * index}')
+            plt.plot(space, T_arr_th[:, index], linestyle = ':')
+            #TODO: sigma onderzoeken, plotjes werken nu (behalve leap-frog, wss ivm sigma)
+        
+        plt.xlabel('position on rod $(m)$', fontsize = 18)
+        plt.ylabel('temperature $(K)$', fontsize = 18)
+        plt.xticks(fontsize = 18)
+        plt.yticks(fontsize = 18)
+        plt.legend()
+        plt.title(f'{name_list[name_counter]} vs. theory')
+        name_counter += 1
+        plt.show()
+        
 
 if __name__ == "__main__":
     main()
+
+
+print(f"\ntotal runtime: {datetime.now() - start_time}")
