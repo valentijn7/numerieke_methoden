@@ -1,10 +1,18 @@
-# numerieke_methoden/III/Task1_MandatoryStructure.py
+# numerieke_methoden/III/task1.py
 
 from typing import List, Dict, Tuple, Any, Callable
 from scipy import special
+from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+
+from algorithms import forward_euler
+from algorithms import leap_frog
+from algorithms import adam_bashforth
+from algorithms import init_crank_nicholson
+from algorithms import crank_nicholson
+from algorithms import runge_kutta_4
 
 
 class PhysConstants:
@@ -14,107 +22,15 @@ class PhysConstants:
         self.T0      = 273      # initial temperature rod (K)
         self.T1      = 373      # temperature of rod at x = 0 for t > 0
                                 #   rod properties:
-        self.L       = 10        # length of the rod (m)
-        self.n_x     = 100      # number of gridpoints in the rod
+        self.L       = 2        # length of the rod (m)
+        self.n_x     = 20       # number of gridpoints in the rod
                                 # step size of the grid
         self.dx      = self.L / self.n_x
                                 #   simulation properties:
         self.t_total = 0.01     # total time of the simulation (s)
-        self.dt      = 0.0001   # time step of the simulation (s)
-                                # number of time steps
-        self.n_t     = int(self.t_total / self.dt)
-
-
-def forward_euler(
-        current_state: np.array,
-        current_time: float,
-        step_size: float,
-        derivative: callable,
-        C: PhysConstants
-    ) -> np.array:
-    """ Performs one step of the Forward Euler method
-    
-    :param current_state: current state of the system (dependent variable)
-    :param current_time: current time of the system (independent variable)
-    :param step_size: step size of the integration
-    :param derivative: function that returns derivatives for current state and time
-    :param C: class (struct) with constants
-    :return: updated values of dependent variable at next time step
-    """
-    return current_state + step_size * derivative(current_state, current_time, C)
-
-
-def leap_frog(
-        prev_state: np.array,
-        current_state: np.array,
-        current_time: float,
-        step_size: float,
-        derivative: callable,
-        C: PhysConstants
-    ) -> np.array:
-    """ Performs one step of the Leap Frog method
-
-    :param prev_state: previous state of the system (dependent variable)
-    :param current_state: current state of the system (dependent variable)
-    :param current_time: current time of the system (independent variable)
-    :param step_size: step size of the integration
-    :param derivative: function that returns derivatives for current state and time
-    :param C: class (struct) with constants
-    :return: updated values of dependent variable at next time step
-    """
-    return prev_state + 2 * step_size * derivative(current_state, current_time, C)
-
-
-def adam_bashforth(
-        prev_state: np.array,
-        current_state: np.array,
-        current_time: float,
-        step_size: float,
-        derivative: callable,
-        C: PhysConstants) -> np.array:
-    """
-    Performs one step of the Adams-Bashforth method
-
-    :param prev_state: previous state of the system (dependent variable)
-    :param current_state: current state of the system (dependent variable)
-    :param current_time: current time of the system (independent variable)
-    :param step_size: step size of the integration
-    :param derivative: function that returns derivatives for current state and time
-    :param C: class (struct) with constants
-    :return: updated values of dependent variable at next time step
-    """
-    return current_state + step_size * \
-        (1.5 * derivative(current_state, current_time, C) \
-         - 0.5 * derivative(prev_state, current_time, C))
-
-
-def crank_nicholson(
-        
-
-
-def RK4(
-        current_state: np.array,
-        current_time: float,
-        step_size: float,
-        derivative: callable,
-        constants: PhysConstants
-    ) -> np.array:
-    """ Performs one step of the 4th order Runge-Kutta
-    
-    :param current_state: current state of the system (dependent variable)
-    :param current_time: current time of the system (independent variable)
-    :param step_size: step size of the integration
-    :param derivative: function that returns derivatives for current state and time
-    :param constants: class (struct) with constants
-    :return: updated values of dependent variable at next time step
-    """
-                            # calculate the 4 k's
-    k1 = step_size * derivative(current_state, current_time, constants)
-    k2 = step_size * derivative(current_state + 0.5 * k1, current_time + 0.5 * step_size, constants)
-    k3 = step_size * derivative(current_state + 0.5 * k2, current_time + 0.5 * step_size, constants)
-    k4 = step_size * derivative(current_state + k3, current_time + step_size, constants)
-                            # calculate and return new state
-    return current_state + (k1 + 2 * k2 + 2 * k3 + k4) / 6
+        self.n_t     = 1000     # number of time steps
+                                # time step of the simulation (s)
+        self.dt      = self.t_total / self.n_t
 
 
 def derivative_heat(
@@ -190,16 +106,20 @@ def Task1_caller(L: int,
     Xaxis       a 1-D array (length nx) with x-values used
     Result      a 2-D array (size [nx, nt]), with the results of the routine    
     """
-    C = PhysConstants() 
+    C = PhysConstants()         # init PhysConstants and recalculate based on input params
+    C.n_x = int(nx)
+    C.dx = L / nx
+    C.dt = dt
+    C.n_t = int(C.t_total / dt)
                                 # first, we define a grid, or matrix, for space and time;
-    grid = np.ndarray(shape = (C.n_x, C.n_t), dtype = float)
+    grid = np.ndarray(shape = (nx + 1, C.n_t + 1), dtype = float)
     grid[:] = np.nan
     grid[:, 0] = C.T0
     grid[0, :] = C.T1
-    grid[:, -1] = 0.0 
+    grid[:, -1] = 0.0
                                 # second, we define the space and time arrays
-    time = np.arange(0, t_total, dt)
-    space = np.arange(0, L, L / nx)
+    time = np.linspace(0, t_total, C.n_t + 1)
+    space = np.linspace(0, L, nx + 1)
                                 # third, solve heat equation
     if TimeSteppingMethod == "Theory":
         for idx in range(1, len(time)):
@@ -223,20 +143,108 @@ def Task1_caller(L: int,
             else:
                 grid[:, idx] = adam_bashforth(grid[:, idx - 2], grid[:, idx - 1], time[idx - 1], dt, derivative_heat, C)
 
+    elif TimeSteppingMethod == "CN":
+        A, B = init_crank_nicholson(C)
+        for idx in range(1, len(time)):
+            grid[:, idx] = crank_nicholson(grid[:, idx - 1], A, B, C)
+
     elif TimeSteppingMethod == "RK4":
         for idx in range(1, len(time)):
-            grid[:, idx] = RK4(grid[:, idx - 1], time[idx - 1], dt, derivative_heat, C)
+            grid[:, idx] = runge_kutta_4(grid[:, idx - 1], time[idx - 1], dt, derivative_heat, C)
 
     else:
         raise ValueError("Invalid TimeSteppingMethod")
 
-    return time, space, grid   
+    return time, space, grid
+
+
+def MSE(
+        gt: np.array,
+        pred: np.array
+    ) -> float:
+    """ Calculate the Mean Squared Error between two arrays
+
+    :param gt: ground truth array
+    :param pred: predicted array
+    :return: RMSE value
+)
+    """
+    return np.mean((gt - pred)**2)
+
+
+def MSE_per_t(
+        gt: np.array,
+        pred: np.array
+    ) -> np.array:
+    """ Calculate the Mean Squared Error between two grids at each time step
+)
+    :param gt: ground truth grid
+    :param pred: predicted grid
+    :return: RMSE values at each time step
+    """
+    return np.mean((gt - pred)**2, axis = 0)
+
+
+def find_optimal_sigmas(
+        C: PhysConstants
+    ) -> Dict[str, Tuple[float, float, float]]:
+    """
+    Find the optimal sigmas (in pseudo-pseudocode):
+    - for each method:
+        - try dx candidates:
+            - try dt candidates:
+            - if it blows up, store previous dt
+        - choose the dx with the highest succesful dt
+        - store sigma, dx, dt in dictionary
+    - return dictionary
+
+    :param C: class (struct) with constants
+    :return: dictionary with optimal sigma for each method
+    """
+    params = {}
+    methods = ["FE", "LF", "AB", "CN", "RK4"]
+    dx_candidates = np.logspace(-2, 0, 30)
+    dt_candidates = np.logspace(-5, 10, 16)
+
+    for method in methods:
+        if method == "CN": #! TODO verwijder dit na toevoegen CN
+            params[method] = (None, None, None)
+            continue
+
+        print(f'Searching params for {method}...')
+        max_dts = np.zeros(len(dx_candidates))
+
+        for idx_dx, dx in enumerate(dx_candidates):
+            print(f'\tSearching for max stable dt with dx = {dx}...')
+            nx = int(C.L / dx) + 1
+
+            for idx_dt, dt in enumerate(dt_candidates):
+                _, _, grid = Task1_caller(C.L, nx, C.t_total, dt, method)
+                if np.isnan(grid).any() or np.isinf(grid).any() or np.max(grid) > C.T1: 
+                    max_dts[idx_dx] = dt_candidates[idx_dt - 1]
+                    break
+        
+        max_dx = dx_candidates[np.argmax(max_dts)]
+        max_dt = np.max(max_dts)
+        sigma = (C.kappa * max_dt) / max_dx**2
+        params[method] = (sigma, max_dx, max_dt)
+
+    return params
+
 
 
 def main():
-    #! TODO bereken die ratio van de lecture slides
+    start_time = datetime.now()
     C = PhysConstants()
 
+    # we search for optimal sigma's first, i.e. sigma's that are as big as possible
+    # while still stable. we do this with a fixed dx, and iterate dts till it blows up.
+    # This process is embedded into the calls to Task1_caller below, and the found dx's and dt's
+    # are used in the final simulation and also printed for reference
+    params = find_optimal_sigmas(C)
+    # params is a dictionary with method as key, values are sigma, dx, dt as tuple
+    print(params)
+    
     time, space, grid_th = Task1_caller(
         C.L,
         C.n_x,
@@ -265,6 +273,13 @@ def main():
         C.dt,
         "AB")
     
+    time, space, grid_CN = Task1_caller(
+        C.L,
+        C.n_x,
+        C.t_total,
+        C.dt,
+        "CN")
+    
     time, space, grid_RK4 = Task1_caller(
         C.L,
         C.n_x,
@@ -272,31 +287,35 @@ def main():
         C.dt,
         "RK4")
     
-    ######### PLotting #########
+    ######### Plotting #########
 
-    grids = [grid_th, grid_FE, grid_LF, grid_AB, grid_RK4]
+    grids = [grid_th, grid_FE, grid_LF, grid_AB, grid_CN, grid_RK4]
+    markers = ['o', 's', '^', 'D', 'v', 'x']
+    marker_ints = [2, 3, 5, 7, 11]
 
     fig, ax = plt.subplots()    # unpack Tuple with , for single element
     line_th, = ax.plot([], [], lw = 2, label = "theoretical")
-    line_FE, = ax.plot([], [], lw = 2, label = "forward Euler")
-    line_LF, = ax.plot([], [], lw = 2, label = "leap-frog")
-    line_AB, = ax.plot([], [], lw = 2, label = "Adams-Bashforth")
-    line_RK4, = ax.plot([], [], lw = 2, label = "Runge-Kutta 4")
+    line_FE, = ax.plot([], [], lw = 2, label = "forward Euler", marker = markers[0], markevery = marker_ints[0])
+    line_LF, = ax.plot([], [], lw = 2, label = "leap-frog", marker = markers[1], markevery = marker_ints[1])
+    line_AB, = ax.plot([], [], lw = 2, label = "Adams-Bashforth", marker = markers[2], markevery = marker_ints[2])
+    line_CN, = ax.plot([], [], lw = 2, label = "Crank-Nicholson", marker = markers[3], markevery = marker_ints[3])
+    line_RK4, = ax.plot([], [], lw = 2, label = "Runge-Kutta 4", marker = markers[4], markevery = marker_ints[4])
 
                                 # set limits, labels, grid, legend, ticks
     ax.set_xlim(space[0], space[-1])
     ax.set_ylim(np.nanmin(grids), np.nanmax(grids))
-    ax.set_xlabel("rod (m)", fontsize = 16)
-    ax.set_ylabel("temperature (K)", fontsize = 16)
+    ax.set_xlabel("rod (m)", fontsize = 20)
+    ax.set_ylabel("temperature (K)", fontsize = 20)
     ax.grid(True)
-    plt.legend(fontsize = 16)
-    plt.xticks(fontsize = 16)
-    plt.yticks(fontsize = 16)
+    plt.legend(fontsize = 20)
+    plt.xticks(fontsize = 20)
+    plt.yticks(fontsize = 20)
 
     def init():                 # create empty plot animation
         line_FE.set_data([], [])
         line_LF.set_data([], [])
         line_AB.set_data([], [])
+        line_CN.set_data([], [])
         line_RK4.set_data([], [])
         line_th.set_data([], [])
         return line_FE, line_LF, line_AB, line_RK4, line_th
@@ -312,11 +331,13 @@ def main():
         line_LF.set_data(space, y_LF)
         y_AB = grid_AB[:, frame]
         line_AB.set_data(space, y_AB)
+        y_CN = grid_CN[:, frame]
+        line_CN.set_data(space, y_CN)
         y_RK4 = grid_RK4[:, frame]
         line_RK4.set_data(space, y_RK4)
 
-        ax.set_title(f"t = {time[frame]:.4f} s", fontsize = 16)
-        return line_FE, line_LF, line_AB, line_RK4, line_th
+        ax.set_title(f"t = {time[frame]:.4f} s", fontsize = 20)
+        return line_FE, line_LF, line_AB, line_CN, line_RK4, line_th
 
     # https://matplotlib.org/stable/api/_as_gen/matplotlib.animation.FuncAnimation.html
     ani = animation.FuncAnimation(fig,
@@ -324,8 +345,60 @@ def main():
                                   frames = len(time),
                                   init_func = init,
                                   interval = 100)
-
     plt.show()
+
+
+    # Next, we plot our data in stationary graphs. We get 5 plots, one for each method's
+    # comparison with the theoretical solution.
+    d_results = {'Forward Euler' : grid_FE,
+                 'Leap-frog' : grid_LF,
+                 'Adams-Bashforth' : grid_AB,
+                 'Crank-Nicholson' : grid_CN,
+                 'Runge-Kutta 4' : grid_RK4
+                 }
+    colours = ('#0A97B0', '#AE445A', '#2A3335', '#F29F58',
+               '#355F2E', '#AE445A', '#A27B5C', '#FFCFEF')
+    
+
+    for method in d_results.keys():
+        plt.figure(figsize = (15, 4))
+
+        for t, col in zip(range(0, C.n_t, int(C.n_t / 5)), colours):
+            plt.plot(space, d_results[method][:, t], marker = '.', color = col,
+                     label = f't = {time[t]:.4f}s')
+            plt.plot(space, grid_th[:, t], marker = '.', color = col, linestyle = ':')
+        plt.title(f'{method} vs. theory (dashed)', fontsize = 20)
+        plt.xlabel('Position on rod $(m)$', fontsize = 20)
+        plt.ylabel('Temperature $(K)$', fontsize = 20)
+        plt.xticks(fontsize = 20)
+        plt.yticks(fontsize = 20)
+        plt.legend(fontsize = 20)
+        plt.grid()
+        plt.show()
+
+
+    # Next, we plot the error of each method compared to the theoretical solution
+    # in one combined plot. Error calculated as Mean Squared Error
+    d_errors = {}
+    for method in d_results.keys():
+        d_errors[method] = MSE_per_t(grid_th, d_results[method])
+
+    for idx, method in enumerate(d_errors.keys()):
+        plt.plot(time, d_errors[method], color = colours[idx], label = method,
+                 marker = markers[idx % len(markers)], markevery = marker_ints[idx % len(marker_ints)])
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.grid(True, which = 'both')
+    plt.title('method vs. theory: MSE', fontsize = 20)
+    plt.xlabel('log(time $(s))$', fontsize = 20)
+    plt.ylabel('log(MSE $(T^2)$)', fontsize = 20)
+    plt.xticks(fontsize = 20)
+    plt.yticks(fontsize = 20)
+    plt.legend(fontsize = 20)
+    plt.show()
+
+
+    print(f"\nexecution time: {datetime.now() - start_time}")
 
 
 if __name__ == "__main__":
