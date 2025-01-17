@@ -187,16 +187,18 @@ def MSE_per_t(
 
 def find_optimal_sigmas(
         C: PhysConstants
-    ) -> Dict[str, Tuple[float, float, float]]:
+    ) -> Dict[str, Tuple[float, float, float, float]]:
     """
     Find the optimal sigmas (in pseudo-pseudocode):
-    - for each method:
+    - for each method and kappa:
         - try dx candidates:
             - try dt candidates:
             - if it blows up, store previous dt
         - choose the dx with the highest succesful dt
-        - store sigma, dx, dt in dictionary
+        - store sigma, dx, dt, kappa in dictionary
     - return dictionary
+
+    In other words, it searches a point within 3D search space
 
     :param C: class (struct) with constants
     :return: dictionary with optimal sigma for each method
@@ -205,6 +207,7 @@ def find_optimal_sigmas(
     methods = ["FE", "LF", "AB", "CN", "RK4"]
     dx_candidates = np.logspace(-2, 0, 30)
     dt_candidates = np.logspace(-5, 10, 16)
+    kappa_candidates = np.linspace(1.1, 4, 5)
 
     for method in methods:
         if method == "CN": #! TODO verwijder dit na toevoegen CN
@@ -212,25 +215,37 @@ def find_optimal_sigmas(
             continue
 
         print(f'Searching params for {method}...')
+        final_kappa_dxs = np.zeros(len(kappa_candidates))
+        final_kappa_dts = np.zeros(len(kappa_candidates))
         max_dts = np.zeros(len(dx_candidates))
 
-        for idx_dx, dx in enumerate(dx_candidates):
-            print(f'\tSearching for max stable dt with dx = {dx}...')
-            nx = int(C.L / dx) + 1
+        for idx_kappa, kappa in enumerate(kappa_candidates):
+            print(f'Searching for kappa = {kappa}')
+            C.kappa = kappa
 
-            for idx_dt, dt in enumerate(dt_candidates):
-                _, _, grid = Task1_caller(C.L, nx, C.t_total, dt, method)
-                if np.isnan(grid).any() or np.isinf(grid).any() or np.max(grid) > C.T1: 
-                    max_dts[idx_dx] = dt_candidates[idx_dt - 1]
-                    break
+            for idx_dx, dx in enumerate(dx_candidates):
+                print(f'\tSearching for max stable dt with dx = {dx}...')
+                nx = int(C.L / dx) + 1
+
+                for idx_dt, dt in enumerate(dt_candidates):
+                    _, _, grid = Task1_caller(C.L, nx, C.t_total, dt, method)
+                    if np.isnan(grid).any() or np.isinf(grid).any() or np.max(grid) > C.T1: 
+                        max_dts[idx_dx] = dt_candidates[idx_dt - 1]
+                        break
         
-        max_dx = dx_candidates[np.argmax(max_dts)]
-        max_dt = np.max(max_dts)
-        sigma = (C.kappa * max_dt) / max_dx**2
-        params[method] = (sigma, max_dx, max_dt)
+            max_dx = dx_candidates[np.argmax(max_dts)]
+            max_dt = np.max(max_dts)
+            final_kappa_dxs[idx_kappa] = max_dx
+            final_kappa_dts[idx_kappa] = max_dt
+        
+        final_dt = np.max(final_kappa_dts)
+        final_dx = final_kappa_dxs[np.argmax(final_kappa_dts)]
+        
+        sigma = (C.kappa * final_dt) / final_dx**2
+        params[method] = (sigma, final_dx, final_dt, kappa)
+        print('\n\n\n')
 
     return params
-
 
 
 def main():
@@ -244,7 +259,14 @@ def main():
     params = find_optimal_sigmas(C)
     # params is a dictionary with method as key, values are sigma, dx, dt as tuple
     print(params)
+
+    """
+
+    """
     
+
+
+
     time, space, grid_th = Task1_caller(
         C.L,
         C.n_x,
@@ -287,7 +309,7 @@ def main():
         C.dt,
         "RK4")
     
-    ######### Plotting #########
+    ########## plotting ##########
 
     grids = [grid_th, grid_FE, grid_LF, grid_AB, grid_CN, grid_RK4]
     markers = ['o', 's', '^', 'D', 'v', 'x']
