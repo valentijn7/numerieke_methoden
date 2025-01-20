@@ -68,44 +68,54 @@ def adam_bashforth(
          - 0.5 * derivative(prev_state, current_time, C))
 
 
-def init_crank_nicholson(
+def init_crank_nicolson(
         C: Any
 ) -> Tuple[np.array, np.array]:
     """
-    Init, precompute, and return the matrices for the Crank-Nicholson 
+    Init, precompute, and return the matrices for the Crank-nicolson 
 
     Assumption: Dirichlet boundary conditions
 
     :param C: class (struct) with constants
     :return: matrices A and B
     """
+    n = C.n_x + 1
+    A = np.zeros((n, n), dtype = float)
+    B = np.zeros((n, n), dtype = float)
+
     sigma = C.kappa * C.dt / (C.dx ** 2)
-    A = np.zeros((C.n_x + 1, C.n_x + 1), dtype = float)
-    B = np.zeros((C.n_x + 1, C.n_x + 1), dtype = float)
-
                             # init main- and off-diagonal elements, rest is zero
-    for idx in range(C.n_x + 1):
-        A[idx, idx] = 1 + 2 * sigma
-        B[idx, idx] = 1 - 2 * sigma
+    for idx in range(1, n - 1):
+        A[idx, idx] = 1 + sigma
+        A[idx, idx - 1] = -sigma / 2
+        A[idx, idx + 1] = -sigma / 2
 
-        if idx > 0:
-            A[idx, idx - 1] = -sigma
-            B[idx, idx - 1] = sigma
-        if idx < C.n_x - 1:
-            A[idx, idx + 1] = -sigma
-            B[idx, idx + 1] = sigma
+        B[idx, idx] = 1 - sigma
+        B[idx, idx - 1] = sigma / 2
+        B[idx, idx + 1] = sigma / 2
+
+                            # Dirichlet boundary conditions:
+    A[0, :] = 0             # zero out first row;
+    A[0, 0] = 1             # add 1 on diagonal
+    B[0, :] = 0
+    B[0, 0] = 1
+
+    A[-1, :] = 0            # same for final row
+    A[-1, -1] = 1
+    B[-1, :] = 0
+    B[-1, -1] = 1
 
     return A, B
 
 
-def crank_nicholson(
+def crank_nicolson(
         current_state: np.array,
         A: np.array,
         B: np.array,
         constants: Any
 ) -> np.array:
     """
-    Performs one step of the Crank-Nicholson method (with Dirichlet)
+    Performs one step of the Crank-Nicolson method (with Dirichlet)
 
     :param current_state: current state of the system (dependent variable)
     :param A: matrix A
@@ -113,16 +123,9 @@ def crank_nicholson(
     :param constants: class (struct) with constants
     :return: update to next time step
     """
-    new_state = current_state.copy()
-    A = A[1 : -1, 1 : -1]
-    B = B[1 : -1, 1 : -1]
-                            # calculate right-hand side
-    rhs = B.dot(current_state[1 : -1])
-    sigma = constants.kappa * constants.dt / (2 * constants.dx**2)
-    rhs[0] += sigma * constants.T1
-                            # solve the system
-    new_state[1 : -1] = np.linalg.solve(A, rhs)
-    return new_state
+    intermediate = np.dot(B, current_state)
+    intermediate[0], intermediate[-1] = constants.T1, constants.T0
+    return np.linalg.solve(A, intermediate)
 
     
 def runge_kutta_4(

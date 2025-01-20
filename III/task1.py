@@ -10,8 +10,8 @@ import matplotlib.animation as animation
 from algorithms import forward_euler
 from algorithms import leap_frog
 from algorithms import adam_bashforth
-from algorithms import init_crank_nicholson
-from algorithms import crank_nicholson
+from algorithms import init_crank_nicolson
+from algorithms import crank_nicolson
 from algorithms import runge_kutta_4
 
 
@@ -91,7 +91,7 @@ def Task1_caller(L: int,
     TimeSteppingMethod  Could be:
      "Theory"             Theoretical solution
      "AB"                 Adams-Bashforth
-     "CN"                 Crank-Nicholson
+     "CN"                 Crank-nicolson
      "EF"                 Euler Forward
      "LF"                 Leaf Frog
      "RK4"                Runge-Kutta 4
@@ -116,7 +116,7 @@ def Task1_caller(L: int,
     grid[:] = np.nan
     grid[:, 0] = C.T0
     grid[0, :] = C.T1
-    grid[:, -1] = 0.0
+    grid[-1, :] = C.T0
                                 # second, we define the space and time arrays
     time = np.linspace(0, t_total, C.n_t + 1)
     space = np.linspace(0, L, nx + 1)
@@ -144,9 +144,9 @@ def Task1_caller(L: int,
                 grid[:, idx] = adam_bashforth(grid[:, idx - 2], grid[:, idx - 1], time[idx - 1], dt, derivative_heat, C)
 
     elif TimeSteppingMethod == "CN":
-        A, B = init_crank_nicholson(C)
+        A, B = init_crank_nicolson(C)
         for idx in range(1, len(time)):
-            grid[:, idx] = crank_nicholson(grid[:, idx - 1], A, B, C)
+            grid[:, idx] = crank_nicolson(grid[:, idx - 1], A, B, C)
 
     elif TimeSteppingMethod == "RK4":
         for idx in range(1, len(time)):
@@ -256,15 +256,15 @@ def main():
     # while still stable. we do this with a fixed dx, and iterate dts till it blows up.
     # This process is embedded into the calls to Task1_caller below, and the found dx's and dt's
     # are used in the final simulation and also printed for reference
-    params = find_optimal_sigmas(C)
+    # params = find_optimal_sigmas(C)
     # params is a dictionary with method as key, values are sigma, dx, dt as tuple
-    print(params)
+    # print(params)
 
     """
 
     """
     
-
+ 
 
 
     time, space, grid_th = Task1_caller(
@@ -320,7 +320,7 @@ def main():
     line_FE, = ax.plot([], [], lw = 2, label = "forward Euler", marker = markers[0], markevery = marker_ints[0])
     line_LF, = ax.plot([], [], lw = 2, label = "leap-frog", marker = markers[1], markevery = marker_ints[1])
     line_AB, = ax.plot([], [], lw = 2, label = "Adams-Bashforth", marker = markers[2], markevery = marker_ints[2])
-    line_CN, = ax.plot([], [], lw = 2, label = "Crank-Nicholson", marker = markers[3], markevery = marker_ints[3])
+    line_CN, = ax.plot([], [], lw = 2, label = "Crank-nicolson", marker = markers[3], markevery = marker_ints[3])
     line_RK4, = ax.plot([], [], lw = 2, label = "Runge-Kutta 4", marker = markers[4], markevery = marker_ints[4])
 
                                 # set limits, labels, grid, legend, ticks
@@ -375,7 +375,7 @@ def main():
     d_results = {'Forward Euler' : grid_FE,
                  'Leap-frog' : grid_LF,
                  'Adams-Bashforth' : grid_AB,
-                 'Crank-Nicholson' : grid_CN,
+                 'Crank-nicolson' : grid_CN,
                  'Runge-Kutta 4' : grid_RK4
                  }
     colours = ('#0A97B0', '#AE445A', '#2A3335', '#F29F58',
