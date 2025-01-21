@@ -14,6 +14,10 @@ from algorithms import init_crank_nicolson
 from algorithms import crank_nicolson
 from algorithms import runge_kutta_4
 
+# NB: The animations only worked for one of us, who uses VSCode with up-to-date packages.
+#     We do not use them in the report though, so if they cause any problems, uncommenting
+#     them suffices.
+
 
 class PhysConstants:
     def __init__(self):
@@ -27,7 +31,7 @@ class PhysConstants:
                                 # step size of the grid
         self.dx      = self.L / self.n_x
                                 #   simulation properties:
-        self.t_total = 0.01     # total time of the simulation (s)
+        self.t_total = 0.1      # total time of the simulation (s)
         self.n_t     = 1000     # number of time steps
                                 # time step of the simulation (s)
         self.dt      = self.t_total / self.n_t
@@ -78,7 +82,8 @@ def Task1_caller(L: int,
                  nx: int,
                  t_total: int,
                  dt: int,
-                 TimeSteppingMethod: str, 
+                 TimeSteppingMethod: str,
+                 kappa: int = 2,
                  DiffMethod: str = "CD"
     ) -> Tuple[np.array, np.array, np.array]:
     """ This routine calls the function that solves the heat equation
@@ -107,6 +112,7 @@ def Task1_caller(L: int,
     Result      a 2-D array (size [nx, nt]), with the results of the routine    
     """
     C = PhysConstants()         # init PhysConstants and recalculate based on input params
+    C.kappa = kappa
     C.n_x = int(nx)
     C.dx = L / nx
     C.dt = dt
@@ -186,7 +192,7 @@ def MSE_per_t(
 
 
 def find_optimal_sigmas(
-        C: PhysConstants
+        C: PhysConstants, verbose = True
     ) -> Dict[str, Tuple[float, float, float, float]]:
     """
     Find the optimal sigmas (in pseudo-pseudocode):
@@ -201,30 +207,27 @@ def find_optimal_sigmas(
     In other words, it searches a point within 3D search space
 
     :param C: class (struct) with constants
+    :param verbose: whether to be verbose and print a lot
     :return: dictionary with optimal sigma for each method
     """
     params = {}
     methods = ["FE", "LF", "AB", "CN", "RK4"]
     dx_candidates = np.logspace(-2, 0, 30)
-    dt_candidates = np.logspace(-5, 10, 16)
+    dt_candidates = np.logspace(-5, 2, 16)
     kappa_candidates = np.linspace(1.1, 4, 5)
 
     for method in methods:
-        if method == "CN": #! TODO verwijder dit na toevoegen CN
-            params[method] = (None, None, None)
-            continue
-
-        print(f'Searching params for {method}...')
+        print(f'Searching params for {method}...') if verbose else None
         final_kappa_dxs = np.zeros(len(kappa_candidates))
         final_kappa_dts = np.zeros(len(kappa_candidates))
         max_dts = np.zeros(len(dx_candidates))
 
         for idx_kappa, kappa in enumerate(kappa_candidates):
-            print(f'Searching for kappa = {kappa}')
+            print(f'Searching for kappa = {kappa}') if verbose else None
             C.kappa = kappa
 
             for idx_dx, dx in enumerate(dx_candidates):
-                print(f'\tSearching for max stable dt with dx = {dx}...')
+                print(f'\tSearching for max stable dt with dx = {dx}...') if verbose else None
                 nx = int(C.L / dx) + 1
 
                 for idx_dt, dt in enumerate(dt_candidates):
@@ -243,29 +246,47 @@ def find_optimal_sigmas(
         
         sigma = (C.kappa * final_dt) / final_dx**2
         params[method] = (sigma, final_dx, final_dt, kappa)
-        print('\n\n\n')
+        print('\n\n\n') if verbose else None
 
     return params
+
+
+def pprint_dict(
+        d: Dict[Any, Any]
+) -> None:
+    """ 
+    Pretty prints a dictionary
+
+    :param d: a dictionary
+    """
+    for key, val in d.items():
+        print(key, ' : ', val)
 
 
 def main():
     start_time = datetime.now()
     C = PhysConstants()
+    print('dx = ', C.dx)
+    print('dt = ', C.dt)
+    print('sigma = ', C.kappa * C.dt / (C.dx ** 2))
 
-    # we search for optimal sigma's first, i.e. sigma's that are as big as possible
-    # while still stable. we do this with a fixed dx, and iterate dts till it blows up.
-    # This process is embedded into the calls to Task1_caller below, and the found dx's and dt's
-    # are used in the final simulation and also printed for reference
-    # params = find_optimal_sigmas(C)
-    # params is a dictionary with method as key, values are sigma, dx, dt as tuple
-    # print(params)
+    # We search for optimal sigma's first, i.e. sigma's that are as big as possible
+    # while still stable. We do this with a fixed dx, and iterate dts till it blows up.
+    # This process is embedded into the calls to Task1_caller below, and the found dx's
+    # and dt's are used in the final simulation and also printed for reference.
+    # 'params' is a dictionary with method as key, values are sigma, dx, dt as tuple
 
-    """
+    # params = find_optimal_sigmas(C, False)
+    # pprint_dict(params)
 
-    """
-    
- 
+    # Update: this method is kind of naive and does not work as intended. In the 3D search
+    # space (Cartesian product of dx, dt, kappa), there are multiple locations with the 
+    # same sigma values (depending on the ratio's), causing this method not too find an
+    # "optimum," but rather a kind of "maximum". In addition, in contrast to our expectations,
+    # the Dirichlet boundaries make a simulation more stable (compared to, for instance, periodic
+    # or infinite domains), leading to higher sigma's then we expected.
 
+    ###### 
 
     time, space, grid_th = Task1_caller(
         C.L,
@@ -320,12 +341,12 @@ def main():
     line_FE, = ax.plot([], [], lw = 2, label = "forward Euler", marker = markers[0], markevery = marker_ints[0])
     line_LF, = ax.plot([], [], lw = 2, label = "leap-frog", marker = markers[1], markevery = marker_ints[1])
     line_AB, = ax.plot([], [], lw = 2, label = "Adams-Bashforth", marker = markers[2], markevery = marker_ints[2])
-    line_CN, = ax.plot([], [], lw = 2, label = "Crank-nicolson", marker = markers[3], markevery = marker_ints[3])
+    line_CN, = ax.plot([], [], lw = 2, label = "Crank-Nicolson", marker = markers[3], markevery = marker_ints[3])
     line_RK4, = ax.plot([], [], lw = 2, label = "Runge-Kutta 4", marker = markers[4], markevery = marker_ints[4])
 
                                 # set limits, labels, grid, legend, ticks
     ax.set_xlim(space[0], space[-1])
-    ax.set_ylim(np.nanmin(grids), np.nanmax(grids))
+    ax.set_ylim(np.nanmin(grid_FE), np.nanmax(grid_FE))
     ax.set_xlabel("rod (m)", fontsize = 20)
     ax.set_ylabel("temperature (K)", fontsize = 20)
     ax.grid(True)
@@ -375,7 +396,7 @@ def main():
     d_results = {'Forward Euler' : grid_FE,
                  'Leap-frog' : grid_LF,
                  'Adams-Bashforth' : grid_AB,
-                 'Crank-nicolson' : grid_CN,
+                 'Crank-Nicolson' : grid_CN,
                  'Runge-Kutta 4' : grid_RK4
                  }
     colours = ('#0A97B0', '#AE445A', '#2A3335', '#F29F58',
@@ -383,7 +404,7 @@ def main():
     
 
     for method in d_results.keys():
-        plt.figure(figsize = (15, 4))
+        plt.figure(figsize = (15, 3.5))
 
         for t, col in zip(range(0, C.n_t, int(C.n_t / 5)), colours):
             plt.plot(space, d_results[method][:, t], marker = '.', color = col,
@@ -396,6 +417,7 @@ def main():
         plt.yticks(fontsize = 20)
         plt.legend(fontsize = 20)
         plt.grid()
+        plt.tight_layout()
         plt.show()
 
 
@@ -405,20 +427,82 @@ def main():
     for method in d_results.keys():
         d_errors[method] = MSE_per_t(grid_th, d_results[method])
 
+    ax = plt.gca()
     for idx, method in enumerate(d_errors.keys()):
         plt.plot(time, d_errors[method], color = colours[idx], label = method,
                  marker = markers[idx % len(markers)], markevery = marker_ints[idx % len(marker_ints)])
     plt.xscale('log')
     plt.yscale('log')
+    # https://matplotlib.org/stable/api/_as_gen/matplotlib.axes.Axes.set_ylim.html
+    ax.set_ylim(top = MSE_per_t(grid_th, d_results['Forward Euler']).max())
     plt.grid(True, which = 'both')
-    plt.title('method vs. theory: MSE', fontsize = 20)
-    plt.xlabel('log(time $(s))$', fontsize = 20)
-    plt.ylabel('log(MSE $(T^2)$)', fontsize = 20)
+    plt.title('MSE(method, theory)', fontsize = 20)
+    plt.xlabel('time $(s)$', fontsize = 20)
+    plt.ylabel('MSE $(T^2)$', fontsize = 20)
     plt.xticks(fontsize = 20)
     plt.yticks(fontsize = 20)
     plt.legend(fontsize = 20)
+    # plt.tight_layout()
     plt.show()
 
+
+    # Next, to analyse the stability of the methods as a function of
+    # time step and method, we loop over a logspace of dt's and plot
+    # the MSE per method, expecting to see them blow up at a certain
+    # point, i.e. their MSEs become larger than expected numerical error.
+    methods = ["FE", "LF", "AB", "CN", "RK4"]
+    dt_values = np.logspace(-4, -2, 40)
+    d_errors = {m: [] for m in methods}
+
+    for method in methods:
+        for dt in dt_values:
+            _, _, grid_th  = Task1_caller(C.L, C.n_x, C.t_total, dt, "Theory")
+            _, _, grid_num = Task1_caller(C.L, C.n_x, C.t_total, dt, method)
+            d_errors[method].append(MSE(grid_th[:, -1], grid_num[:, -1]))
+
+    sigma_values = dt_values / C.dx**2 * C.kappa
+    for idx, method in enumerate(methods):
+        plt.plot(sigma_values, d_errors[method], label = method, marker = 'o', color = colours[idx])
+
+    # plt.axvline(x = C.t_total, color = 'black', linestyle = '--', label = 'total time')
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.grid(True, which = 'both')
+    plt.title(f'dt vs. MSE at final time of evaluation = {C.t_total}', fontsize = 20)
+    plt.xlabel('sigma', fontsize = 20)
+    plt.ylabel('final time MSE $(T^2)$', fontsize = 20)
+    plt.xticks(fontsize = 20)
+    plt.yticks(fontsize = 20)
+    plt.legend(fontsize = 20)
+    # plt.tight_layout()
+    plt.show()
+
+
+    # # Lastly, we take different kappa values and plot the MSE of
+    # # LF over time using these kappas, showing how kappa affects
+    # # the stability of the method (and, inevitably, the accurarcy).
+    # kappas = [2, 4, 5.8, 6, 8]
+    # d_errors = {}
+    # for kappa in kappas:
+    #     _, _, grid_th  = Task1_caller(C.L, C.n_x, C.t_total, C.dt, "Theory", kappa)
+    #     _, _, grid_num = Task1_caller(C.L, C.n_x, C.t_total, C.dt, "LF", kappa)
+    #     d_errors[kappa] = MSE_per_t(grid_th, grid_num)
+
+    # for kappa in kappas:
+    #     plt.plot(time, d_errors[kappa], label = f'kappa = {kappa}',
+    #              marker = markers[idx % len(markers)], markevery = marker_ints[idx % len(marker_ints)])
+        
+    # # plt.xscale('log')
+    # plt.yscale('log')
+    # plt.grid(True, which = 'both')
+    # plt.title('MSE over time for Leap-Frog with different thermal diffusion coefficient values', fontsize = 20)
+    # plt.xlabel('time $(s)$', fontsize = 20)
+    # plt.ylabel('MSE $(T^2)$', fontsize = 20)
+    # plt.xticks(fontsize = 20)
+    # plt.yticks(fontsize = 20)
+    # plt.legend(fontsize = 20)
+    # # plt.tight_layout()
+    # plt.show()
 
     print(f"\nexecution time: {datetime.now() - start_time}")
 
