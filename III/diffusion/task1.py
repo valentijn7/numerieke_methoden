@@ -1,4 +1,4 @@
-# numerieke_methoden/III/task1.py
+# numerieke_methoden/III/diffusion/task1.py
 
 from typing import List, Dict, Tuple, Any, Callable
 from scipy import special

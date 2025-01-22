@@ -1,4 +1,4 @@
-# numerieke_methoden/III/algorithms.py
+# numerieke_methoden/III/diffusion/algorithms.py
 
 from typing import List, Dict, Tuple, Any, Callable
 import numpy as np
