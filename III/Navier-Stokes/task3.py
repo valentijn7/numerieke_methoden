@@ -168,7 +168,7 @@ def Task3_caller(
                     
                                 # init a normally distributed grid
     height = 5
-    h_grid[:, 0] = init_Gaussian_wave((C.n_x + 1) / 2, 20, C) + height
+    h_grid[:, 0] = init_Gaussian_wave((C.n_x + 1) / 3, 20, C) + height
 
                                 # init u grid with 1, and set u to 0 on boundaries
     u_grid = np.zeros((nx + 1, C.n_t + 1))
@@ -207,7 +207,7 @@ def main():
     C = PhysConstants()
     C.L = 10
     C.n_x = 200
-    C.t_total = 1
+    C.t_total = 5
     C.dt = 1e-5
 
     time, space, h_grid, u_grid = Task3_caller(
