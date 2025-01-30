@@ -7,12 +7,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-from algorithms import forward_euler
-from algorithms import leap_frog
-from algorithms import adam_bashforth
-from algorithms import init_crank_nicolson
-from algorithms import crank_nicolson
-from algorithms import runge_kutta_4
+from algorithms_task2 import forward_euler
+from algorithms_task2 import leap_frog
+from algorithms_task2 import adam_bashforth
+from algorithms_task2 import init_crank_nicolson
+from algorithms_task2 import crank_nicolson
+from algorithms_task2 import runge_kutta_4
 
 
 class PhysConstants:
