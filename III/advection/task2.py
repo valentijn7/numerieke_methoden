@@ -393,6 +393,8 @@ def pprint_dict(
 def main():
     # We start by calculating a lot of simulations: all algorithms for the two waves.
     # Later, we do this again but for pseudo-spectral differentiation.
+    # Note that it will take approx 10 minutes to run everything (as measured on an
+    # an Intel Core i7-8565U CPU, 8GB RAM, 64-bit OS)
     start_time = datetime.now()
     C = PhysConstants()
     print(f"dx = {C.dx:.6f}, dt = {C.dt:.6f}, sigma = {C.sigma:.6f}")
@@ -434,7 +436,9 @@ def main():
     markers = ['o', 's', '^', 'D', 'v', 'x']
     marker_ints = [2, 3, 5, 7, 11]
 
+    print('plotting error function for Gauss and Molenkamp separately...')
     # We make an error plot for Gauss- and Molenkamp waves
+    print("\tGauss...")
     d_errors_CD_Gauss = {}
     for key, val in d_results_CD_Gauss.items():
         d_errors_CD_Gauss[key] = MSE_per_t(grid_th_Gauss, val)
@@ -452,6 +456,7 @@ def main():
     plt.show()
 
     # Molenkamp:
+    print("\tMolenkamp...")
     d_errors_CD_Molen = {}
     for key, val in d_results_CD_Molen.items():
         d_errors_CD_Molen[key] = MSE_per_t(grid_th_Molen, val)
@@ -472,9 +477,10 @@ def main():
     # Now, we run a stability analysis be increasing sigma logarithmically
     # and seeing how the final total error (MSE) of each simulation behaves.
     # Gaussian lines are filled and Molenkamp lines are dashed.
+    print('running stability analysis...')
     waves = ['gauss', 'molen']
     methods = ['FE', 'LF', 'AB', 'CN', 'RK4']
-    sigmas = np.logspace(-2, 1, 5)
+    sigmas = np.logspace(-1, 0, 4)
     d_errors_final = {
         wave: {m: [] for m in methods} 
         for wave in waves
@@ -484,10 +490,12 @@ def main():
         for method in methods:
             for sigma in sigmas:
                 dt = C.dx * sigma / C.c
+                print(f'\trunning for {wave}; {method}; dt = {dt}...')
                 _, _, grid_th  = Task2_caller(C.L, C.n_x, C.t_total, dt, "Theory", wave)
                 _, _, grid_num = Task2_caller(C.L, C.n_x, C.t_total, dt, method, wave)
                 d_errors_final[wave][method].append(MSE(grid_th[:, -1], grid_num[:, -1]))
     # Now we plot them all together
+    print('plotting...')
     line_styles = {'gauss': '-', 'molen': '--'}
     for idx, method in enumerate(methods):
         for wave in waves:
@@ -503,6 +511,7 @@ def main():
     plt.xscale('log')
     plt.xscale('log')
     plt.yscale('log')
+    plt.ylim((0, max(max(d_errors_final['gauss']['RK4']), max(d_errors_final['molen']['RK4']))))
     plt.xlabel('sigma', fontsize = 20)
     plt.ylabel('final time MSE $(m^2)$', fontsize = 20)
     plt.grid(True, which = 'both')
@@ -527,6 +536,8 @@ def main():
     time, space, grid_AB_PS_Molen = Task2_caller(C.L, C.n_x, C.t_total, C.dt, "AB", "molen", 'PS')
     time, space, grid_CN_PS_Molen = Task2_caller(C.L, C.n_x, C.t_total, C.dt, "CN", "molen", 'PS')
     time, space, grid_RK4_PS_Molen = Task2_caller(C.L, C.n_x, C.t_total, C.dt, "RK4", "molen", 'PS')
+
+    #EDIT: We did not manage to plot the pseudo-spectral derivatives in time.
 
     # Lastly, we make animation for both the Gaussian and Molenkamp wave
     # using normal differentiation
@@ -674,6 +685,7 @@ def main():
 
 
     print(f"total elapsed time: {datetime.now() - start_time}")
+
 
 if __name__ == "__main__":
     main()
