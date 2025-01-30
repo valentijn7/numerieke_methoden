@@ -421,7 +421,7 @@ def exp_steep_wave() -> animation.FuncAnimation:
     C = PhysConstants()
     C.L = 10
     C.n_x = 200
-    C.t_total = 1.5
+    C.t_total = 2
     C.dt = 1e-5
     C.n_t = int(C.t_total / C.dt)
     
