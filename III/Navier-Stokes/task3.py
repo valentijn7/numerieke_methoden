@@ -8,9 +8,17 @@ from datetime import datetime
 
 from algorithms import RK4
 
-# By default, we've commented out the experiments as they
-# have a long runtime. To run them, simply uncomment the
-# function calls at the bottom of the script.
+# The script starts at the bottom in the main() function; two report
+# plots are generated and three animations. In total, the script takes
+# around 10 minutes to complete. The plots will pop up one-by-one, and
+# to let the next one appear, the previous one has to be closed.
+#   We will hand all of these in, so it's not strictly necessary to run the
+# script. We tried to make the runtime as short as possible, but running
+# 15 simulations takes some time. 
+#   (We tested the animations within VSCode and Spyder, and they both worked.
+# We did initially encounter some troubles with them, though, so it wouldn't
+# surprise us if they don't work on all machines. In that case, we suggest
+# commenting them out and tp run the script without them.)
 
 # Note that every time the term "velocity" is used in this script,
 # what is meant is horizontal velocity.
@@ -393,8 +401,8 @@ def dt_tester(
     plt.yscale('log')
     plt.grid(True, which = 'both')
     # plt.ylim(0.5 * np.min(volumes), 3 * np.max(volumes))
-    plt.savefig('volume_anomaly.pdf', dpi = 300, bbox_inches = 'tight',
-                pad_inches = 0.5)
+    # plt.savefig('volume_anomaly.pdf', dpi = 300, bbox_inches = 'tight',
+    #             pad_inches = 0.5)
     plt.legend(fontsize = 20, facecolor = '#F0F0F0')
     plt.show()
 
@@ -413,7 +421,7 @@ def exp_steep_wave() -> animation.FuncAnimation:
     C = PhysConstants()
     C.L = 10
     C.n_x = 200
-    C.t_total = 1
+    C.t_total = 1.5
     C.dt = 1e-5
     C.n_t = int(C.t_total / C.dt)
     
@@ -507,7 +515,7 @@ def exp_steep_wave() -> animation.FuncAnimation:
         line_2.set_data(space, h_grid_2[:, frame])
         line_3.set_data(space, h_grid_3[:, frame])
         line_4.set_data(space, h_grid_4[:, frame])
-        ax.set_title(f"1D SWE for rest height of {rest_height} -- "
+        ax.set_title(f"Steep Wave experiment -- "
                      f"t = {time[frame]:.4f} s", fontsize = 20)
         return (line_1, line_2, line_3, line_4 )
 
@@ -639,7 +647,7 @@ def exp_low_heights() -> animation.FuncAnimation:
         line_2.set_data(space, h_grid_2[:, frame])
         line_3.set_data(space, h_grid_3[:, frame])
         # line_4.set_data(space, h_grid_4[:, frame])
-        ax.set_title(f"1D SWE for rest height of 5 -- "
+        ax.set_title(f"Low Heights experiment -- "
                      f"t = {time[frame]:.4f} s", fontsize = 20)
         # return (line_1, line_2, line_3, line_4 )
         return (line_1, line_2, line_3, )
@@ -785,7 +793,7 @@ def main():             # script starts here!
         t_total = 1 
     )
 
-    ##### steep wave experiment #####
+    #### steep wave experiment #####
     # our first experiment is to see how the simulation behaves with a very steep wave;
     # uncomment/comment it to run/hide it
 
