@@ -447,8 +447,8 @@ def main():
 
 
     # Next, to analyse the stability of the methods as a function of
-    # time step and method, we loop over a logspace of dt's and plot
-    # the MSE per method, expecting to see them blow up at a certain
+    # time step and method, we loop over a logspace of dt's (and thus sigmas)
+    # and plot the MSE per method, expecting to see them blow up at a certain
     # point, i.e. their MSEs become larger than expected numerical error.
     methods = ["FE", "LF", "AB", "CN", "RK4"]
     dt_values = np.logspace(-4, -2, 40)
